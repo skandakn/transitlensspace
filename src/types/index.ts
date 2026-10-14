@@ -176,3 +176,5 @@ export interface NavItem {
   icon: string;
   badge?: string;
 }
+
+export * from './universe';
