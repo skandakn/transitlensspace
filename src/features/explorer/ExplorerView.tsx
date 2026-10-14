@@ -35,12 +35,8 @@ import {
 } from '../universe/gestures/types'
 import type { NavControlState } from './NavigationControls'
 import type { ExplorerMode } from './types'
-<<<<<<< HEAD
 import type { StarObservation, CelestialObject, CelestialPlanet } from '../../types'
-=======
-import type { StarObservation, CelestialObject } from '../../types'
 import type { HandTrackingState, HeadOrientation } from '../vision'
->>>>>>> main
 import './hud.css'
 
 export interface ExplorerViewProps {

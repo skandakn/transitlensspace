@@ -9,7 +9,7 @@ import { OnboardingModal } from './OnboardingModal'
 import { PrivacyModal } from './PrivacyModal'
 import type { HandTrackingState, VisionHUDProps } from './types'
 
-const ONBOARDING_STORAGE_KEY = 'transitlens_vision_onboarding_shown'
+const _ONBOARDING_STORAGE_KEY = 'transitlens_vision_onboarding_shown'
 
 export function VisionHUD({
   handTracking: externalHandTracking,
