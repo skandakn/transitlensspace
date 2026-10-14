@@ -10,6 +10,15 @@ export interface StarfieldProps {
   quality?: 'low' | 'medium' | 'high'
 }
 
+function createPRNG(seed: number) {
+  let s = seed % 2147483647
+  if (s <= 0) s += 2147483646
+  return () => {
+    s = (s * 16807) % 2147483647
+    return (s - 1) / 2147483646
+  }
+}
+
 /**
  * High-performance 3D starfield rendering thousands of stars
  * with varying astronomical colors, sizes, and real-time twinkling.
@@ -40,13 +49,15 @@ export function Starfield({
       new THREE.Color('#fca5a5')  // Red M dwarf (5%)
     ]
 
+    const rand = createPRNG(actualCount * 7 + 101)
+
     for (let i = 0; i < actualCount; i++) {
       // Uniform spherical shell distribution
-      const u = Math.random()
-      const v = Math.random()
+      const u = rand()
+      const v = rand()
       const theta = u * 2.0 * Math.PI
       const phi = Math.acos(2.0 * v - 1.0)
-      const r = radiusMin + Math.cbrt(Math.random()) * (radiusMax - radiusMin)
+      const r = radiusMin + Math.cbrt(rand()) * (radiusMax - radiusMin)
 
       const sinPhi = Math.sin(phi)
       pos[i * 3] = r * sinPhi * Math.cos(theta)
@@ -54,13 +65,13 @@ export function Starfield({
       pos[i * 3 + 2] = r * Math.cos(phi)
 
       // Color from astronomical palette
-      const selectedColor = colorPalette[Math.floor(Math.random() * colorPalette.length)]
+      const selectedColor = colorPalette[Math.floor(rand() * colorPalette.length)]
       col[i * 3] = selectedColor.r
       col[i * 3 + 1] = selectedColor.g
       col[i * 3 + 2] = selectedColor.b
 
       // Varying magnitude sizes
-      siz[i] = Math.random() < 0.05 ? Math.random() * 2.5 + 2.0 : Math.random() * 1.5 + 0.8
+      siz[i] = rand() < 0.05 ? rand() * 2.5 + 2.0 : rand() * 1.5 + 0.8
     }
 
     return { positions: pos, colors: col, sizes: siz }
