@@ -1,7 +1,5 @@
 import React, { Suspense, useState, useEffect, useRef, useMemo } from 'react'
-import { Canvas, useFrame, useThree } from '@react-three/fiber'
-import { OrbitControls } from '@react-three/drei'
-import * as THREE from 'three'
+import { Canvas } from '@react-three/fiber'
 import {
   Sparkles,
   Compass,
@@ -22,6 +20,15 @@ import { Nebula, DistantGalaxy } from './Nebula'
 import { StarSystem } from './StarSystem'
 import { CelestialDetailsPanel } from './CelestialDetailsPanel'
 import { searchCelestialCatalog } from '../../data/astronomyData'
+import {
+  GestureUniverseController,
+  GestureHUDOverlay,
+  useHandTracking,
+  type GestureNavigationMode,
+  type GestureNavigationSettings,
+  type GestureTarget
+} from './gestures'
+import type { GestureFrame } from '../../types/gestures'
 import type {
   UniverseSceneProps,
   CelestialObject,
@@ -44,81 +51,7 @@ function checkWebGLSupport(): boolean {
   }
 }
 
-/**
- * Camera Controller that smoothly flies to and focuses on selected star systems or planets
- */
-function planetWorldPosition(parent: CelestialObject, planet: CelestialPlanet, elapsed: number) {
-  const seed = Array.from(planet.id).reduce((value, character) => (value * 31 + character.charCodeAt(0)) % 1000, 0)
-  const angle = (seed / 1000) * Math.PI * 2 + planet.orbitSpeed * 0.4 * elapsed
-  const distance = planet.distanceFromStar
-  const inclination = planet.orbitInclination || 0
-  return new THREE.Vector3(
-    parent.position[0] + Math.cos(angle) * distance,
-    parent.position[1] + Math.sin(angle) * Math.sin(inclination) * distance * 0.4,
-    parent.position[2] + Math.sin(angle) * distance,
-  )
-}
 
-function CameraController({
-  target,
-  initialPosition = [0, 45, 120],
-  resetTrigger = 0
-}: {
-  target: SelectedTarget
-  initialPosition?: [number, number, number]
-  resetTrigger?: number
-}) {
-  const { camera } = useThree()
-  const controlsRef = useRef<any>(null)
-  const desiredTarget = useRef(new THREE.Vector3())
-  const desiredPosition = useRef(new THREE.Vector3(...initialPosition))
-  const flightDirection = useRef(new THREE.Vector3(0.35, 0.18, 1).normalize())
-  const previousKey = useRef('')
-
-  useFrame(({ clock }, delta) => {
-    if (!controlsRef.current) return
-    const key = target ? target.type === 'star' ? `star:${target.star.id}` : `planet:${target.planet.id}` : `wide:${resetTrigger}`
-    const focus = target
-      ? target.type === 'star'
-        ? new THREE.Vector3(...target.star.position)
-        : planetWorldPosition(target.parentStar, target.planet, clock.getElapsedTime())
-      : new THREE.Vector3()
-
-    if (key !== previousKey.current) {
-      const offset = camera.position.clone().sub(focus)
-      if (offset.lengthSq() > 0.001) flightDirection.current.copy(offset.normalize())
-      previousKey.current = key
-    }
-
-    desiredTarget.current.copy(focus)
-    if (target) {
-      const radius = target.type === 'star' ? target.star.radius : target.planet.radius
-      const distance = THREE.MathUtils.clamp(Math.max(radius * 7.2, target.type === 'star' ? 12.5 : 5.5), 5.5, 32)
-      desiredPosition.current.copy(focus).addScaledVector(flightDirection.current, distance)
-    } else {
-      desiredPosition.current.set(...initialPosition)
-    }
-
-    const smoothing = 1 - Math.exp(-3.1 * delta)
-    camera.position.lerp(desiredPosition.current, smoothing)
-    controlsRef.current.target.lerp(desiredTarget.current, smoothing)
-    controlsRef.current.update()
-  })
-
-  return (
-    <OrbitControls
-      ref={controlsRef}
-      enableDamping
-      dampingFactor={0.05}
-      minDistance={6}
-      maxDistance={450}
-      maxPolarAngle={Math.PI / 2 + 0.3}
-      rotateSpeed={0.58}
-      zoomSpeed={0.78}
-      panSpeed={0.7}
-    />
-  )
-}
 
 /**
  * Loading Experience Fallback
@@ -162,6 +95,12 @@ function WebGLFallback() {
 
 export interface ExtendedUniverseSceneProps extends UniverseSceneProps {
   onAnalyzeLightCurve?: (star: CelestialObject) => void
+  gestureFrame?: GestureFrame
+  gestureMode?: GestureNavigationMode
+  gestureSettings?: Partial<GestureNavigationSettings>
+  onHoverGestureTarget?: (target: GestureTarget | null) => void
+  enableGestures?: boolean
+  initialGestureMode?: GestureNavigationMode
 }
 
 /**
@@ -186,13 +125,24 @@ export function UniverseScene({
   quality: initialQuality = 'high',
   className = '',
   initialCameraPosition = [0, 40, 110],
-  onAnalyzeLightCurve
+  onAnalyzeLightCurve,
+  enableGestures = true,
+  initialGestureMode = 'explore',
+  gestureFrame: customGestureFrame,
+  gestureMode: customGestureMode,
+  gestureSettings,
+  onHoverGestureTarget
 }: ExtendedUniverseSceneProps) {
   const [hasWebGL] = useState<boolean>(() => checkWebGLSupport())
   const [internalShowOrbits, setInternalShowOrbits] = useState(initialShowOrbits)
   const [internalShowLabels, setInternalShowLabels] = useState(initialShowLabels)
   const [internalEnableMotion, setInternalEnableMotion] = useState(initialEnableMotion)
   const [internalQuality, setInternalQuality] = useState<'low' | 'high'>(initialQuality === 'low' ? 'low' : 'high')
+
+  // Hand tracking and gesture navigation state
+  const handTracking = useHandTracking({ autoStart: false })
+  const [gestureMode, setGestureMode] = useState<GestureNavigationMode>(initialGestureMode)
+  const [gestureHoveredTarget, setGestureHoveredTarget] = useState<GestureTarget | null>(null)
 
   const showOrbits = hideDefaultControls ? initialShowOrbits : internalShowOrbits
   const showLabels = hideDefaultControls ? initialShowLabels : internalShowLabels
@@ -248,6 +198,7 @@ export function UniverseScene({
     if (!searchQuery.trim()) return []
     return searchCelestialCatalog(searchQuery)
   }, [searchQuery])
+
 
   const handleSelectStar = (star: CelestialObject) => {
     setUserSelectedTarget({ type: 'star', star })
@@ -307,10 +258,21 @@ export function UniverseScene({
           <ambientLight intensity={0.45} />
           <directionalLight position={[100, 80, 50]} intensity={0.6} color="#e0f2fe" />
 
-          {/* Interactive Camera Controller */}
-          <CameraController
-            target={activeTarget}
-            initialPosition={initialCameraPosition}
+          {/* Interactive Camera & Hand Gesture Controller */}
+          <GestureUniverseController
+            gestureFrame={customGestureFrame !== undefined ? customGestureFrame : handTracking.frame}
+            mode={enableGestures ? (customGestureMode !== undefined ? customGestureMode : gestureMode) : 'paused'}
+            celestialObjects={celestialObjects}
+            selectedTarget={activeTarget}
+            onSelectStar={handleSelectStar}
+            onSelectPlanet={handleSelectPlanet}
+            onHoverTarget={(target) => {
+              setGestureHoveredTarget(target)
+              onHoverGestureTarget?.(target)
+            }}
+            onReturnToUniverse={handleResetCamera}
+            settings={gestureSettings}
+            initialCameraPosition={initialCameraPosition}
             resetTrigger={resetTrigger}
           />
 
@@ -366,6 +328,21 @@ export function UniverseScene({
           })}
         </Canvas>
       </Suspense>
+
+      {/* Hand Gesture Navigation HUD Overlay */}
+      {enableGestures && (
+        <GestureHUDOverlay
+          mode={gestureMode}
+          onModeChange={setGestureMode}
+          gestureFrame={handTracking.frame}
+          hoveredTarget={gestureHoveredTarget}
+          isWebcamActive={handTracking.isWebcamActive}
+          onToggleWebcam={handTracking.toggleTracking}
+          onReturnToUniverse={handleResetCamera}
+          videoRef={handTracking.videoRef}
+          cameraError={handTracking.error}
+        />
+      )}
 
       {/* Floating 3D HUD Toolbar & Inspector (fallback when external HUD is not managing controls) */}
       {!hideDefaultControls && (

@@ -164,4 +164,8 @@ export interface UniverseSceneProps {
   className?: string
   /** Initial camera position [x, y, z] */
   initialCameraPosition?: [number, number, number]
+  /** Whether hand gesture recognition is enabled (default: true) */
+  enableGestures?: boolean
+  /** Initial gesture navigation mode ('explore' | 'grab' | 'select' | 'paused') */
+  initialGestureMode?: 'explore' | 'grab' | 'select' | 'paused'
 }

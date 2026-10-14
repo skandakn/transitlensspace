@@ -22,12 +22,21 @@
  * the HUD and UniverseScene so they stay in sync without prop-drilling a
  * shared ref.
  */
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { UniverseScene, starObservationsToCelestialObjects } from '../universe'
 import { ExplorerHUD } from './ExplorerHUD'
+import { useHandTracking, HandTrackingOverlay, HandTrackingDemo } from '../hand-tracking'
+import { GestureCalibrationModal } from './GestureCalibrationModal'
+import {
+  DEFAULT_GESTURE_SETTINGS,
+  type GestureNavigationMode,
+  type GestureNavigationSettings,
+  type GestureTarget
+} from '../universe/gestures/types'
 import type { NavControlState } from './NavigationControls'
 import type { ExplorerMode } from './types'
-import type { StarObservation, CelestialObject } from '../../types'
+import type { StarObservation, CelestialObject, CelestialPlanet } from '../../types'
+import type { HandTrackingState, HeadOrientation } from '../vision'
 import './hud.css'
 
 export interface ExplorerViewProps {
@@ -43,6 +52,8 @@ export interface ExplorerViewProps {
   onReturnToUniverse?: () => void
   /** Pre-bundled or adapted celestial objects with physical measurements */
   celestialObjects?: CelestialObject[]
+  /** Consumed tracking state from Member 1 */
+  handTracking?: HandTrackingState
 }
 
 export function ExplorerView({
@@ -52,6 +63,7 @@ export function ExplorerView({
   onNavigateToAnalysis,
   onReturnToUniverse,
   celestialObjects: customCelestialObjects,
+  handTracking,
 }: ExplorerViewProps) {
   // ── Camera / display state ──
   const [mode, setMode] = useState<ExplorerMode>('orbit')
@@ -63,8 +75,42 @@ export function ExplorerView({
   })
   // Track whether info panel is open (closed by user vs. no selection)
   const [infoPanelOpen, setInfoPanelOpen] = useState(true)
+  // Hand tracking visibility & telemetry demo panel (Member 1)
+  const [showHandTracking, setShowHandTracking] = useState(false)
+  const [showGestureDemo, setShowGestureDemo] = useState(false)
+  // Gesture navigation and calibration state (Member 2, Member 3 & Member 4)
+  const [gestureMode, setGestureMode] = useState<GestureNavigationMode>('explore')
+  const [gestureSettings, setGestureSettings] = useState<GestureNavigationSettings>(DEFAULT_GESTURE_SETTINGS)
+  const [isCalibrationOpen, setIsCalibrationOpen] = useState(false)
+  const [hoveredGestureTarget, setHoveredGestureTarget] = useState<GestureTarget | null>(null)
   // Reset key forces UniverseScene to re-mount and reset camera
   const [resetKey, setResetKey] = useState(0)
+  // Head orientation for subtle perspective parallax adjustment
+  const [headOrient, setHeadOrient] = useState<HeadOrientation>({ yaw: 0, pitch: 0, roll: 0 })
+
+  // Real-time hand tracking hook (Member 1)
+  const tracking = useHandTracking({
+    onPinchStart: () => {
+      // Pinch triggers inspection of currently focused star if info panel is closed
+      setInfoPanelOpen(true)
+    }
+  })
+
+  // Keyboard shortcut listeners: Spacebar to pause/unpause gestures, 'c' for calibration
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if ((e.target as HTMLElement)?.tagName === 'INPUT') return
+      if (e.key === ' ' && (showHandTracking || tracking.isCameraActive)) {
+        e.preventDefault()
+        setGestureMode((prev) => (prev === 'paused' ? 'explore' : 'paused'))
+      } else if ((e.key === 'c' || e.key === 'C') && !e.ctrlKey && !e.metaKey) {
+        setIsCalibrationOpen((prev) => !prev)
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [showHandTracking, tracking.isCameraActive])
 
   const defaultCelestialObjects = useMemo(() => starObservationsToCelestialObjects(stars), [stars])
   const celestialObjects = customCelestialObjects || defaultCelestialObjects
@@ -81,7 +127,19 @@ export function ExplorerView({
   }
 
   const handleSelectObject = (obj: { id: string; starObservation?: StarObservation }) => {
-    if (obj.starObservation) handleSelectStar(obj.starObservation)
+    if (obj.starObservation) {
+      handleSelectStar(obj.starObservation)
+    } else {
+      const star = stars.find((s) => s.id === obj.id)
+      if (star) handleSelectStar(star)
+    }
+  }
+
+  const handleSelectPlanet = (_planet: CelestialPlanet, parentStar: CelestialObject) => {
+    const star = stars.find((s) => s.id === parentStar.id)
+    if (star) {
+      handleSelectStar(star)
+    }
   }
 
   const handleResetCamera = () => {
@@ -97,21 +155,57 @@ export function ExplorerView({
     }
   }
 
+  // Handle pinch gesture: lock onto / inspect celestial target
+  const handlePinchSelect = () => {
+    if (!infoPanelOpen) {
+      setInfoPanelOpen(true)
+    } else if (stars.length > 0) {
+      const currentIndex = stars.findIndex((s) => s.id === selectedStarId)
+      const nextIndex = (currentIndex + 1) % stars.length
+      handleSelectStar(stars[nextIndex])
+    }
+  }
+
+  // Handle open palm gesture: glide universe target coordinates
+  const handleHandNavigate = (deltaX: number) => {
+    if (Math.abs(deltaX) > 40 && stars.length > 0) {
+      const dir = deltaX > 0 ? 1 : -1
+      const currentIndex = stars.findIndex((s) => s.id === selectedStarId)
+      const nextIndex = (currentIndex + dir + stars.length) % stars.length
+      handleSelectStar(stars[nextIndex])
+    }
+  }
+
   return (
     <div className="hud-explorer" id="explorer-view">
-      {/* ── 3D Canvas ── */}
-      <UniverseScene
-        key={resetKey}
-        celestialObjects={celestialObjects}
-        selectedObjectId={selectedStarId}
-        onSelectObject={handleSelectObject}
-        showOrbits={navState.showOrbits}
-        showLabels={navState.showLabels}
-        enableMotion={navState.enableMotion}
-        quality={navState.quality}
-        hideDefaultControls={true}
-        className="absolute inset-0 rounded-none border-none"
-      />
+      {/* ── 3D Canvas with subtle Head-Orientation Parallax Viewport ── */}
+      <div
+        className="absolute inset-0 transition-transform duration-100 ease-out"
+        style={{
+          transform: `perspective(1200px) rotateY(${headOrient.yaw * 0.12}deg) rotateX(${
+            -headOrient.pitch * 0.12
+          }deg)`,
+          transformOrigin: 'center center',
+        }}
+      >
+        <UniverseScene
+          key={resetKey}
+          celestialObjects={celestialObjects}
+          selectedObjectId={selectedStarId}
+          onSelectObject={handleSelectObject}
+          onSelectPlanet={handleSelectPlanet}
+          onHoverGestureTarget={setHoveredGestureTarget}
+          gestureFrame={tracking.frame}
+          gestureMode={gestureMode}
+          gestureSettings={gestureSettings}
+          showOrbits={navState.showOrbits}
+          showLabels={navState.showLabels}
+          enableMotion={navState.enableMotion}
+          quality={navState.quality}
+          hideDefaultControls={true}
+          className="absolute inset-0 rounded-none border-none"
+        />
+      </div>
 
       {/* ── Cinematic Space-Exploration HUD Overlay ── */}
       <ExplorerHUD
@@ -141,7 +235,47 @@ export function ExplorerView({
         }
         infoPanelOpen={infoPanelOpen}
         onToggleInfoPanel={setInfoPanelOpen}
+        showHandTracking={showHandTracking}
+        onToggleHandTracking={() => setShowHandTracking((prev) => !prev)}
+        gestureMode={gestureMode}
+        onGestureModeChange={setGestureMode}
+        onOpenCalibration={() => setIsCalibrationOpen(true)}
+        isCameraActive={tracking.isCameraActive}
+        gestureFrame={tracking.frame}
+        hoveredGestureTarget={hoveredGestureTarget}
         systemCount={celestialObjects.length}
+        handTracking={handTracking}
+        onHeadOrient={setHeadOrient}
+        onPinchSelect={handlePinchSelect}
+        onHandNavigate={handleHandNavigate}
+      />
+
+      {/* ── Hand Tracking Overlay & Live Gesture Inspector (Member 1) ── */}
+      {showHandTracking && (
+        <>
+          <HandTrackingOverlay
+            tracking={tracking}
+            onToggleDemoPanel={() => setShowGestureDemo((v) => !v)}
+          />
+          {showGestureDemo && (
+            <HandTrackingDemo
+              tracking={tracking}
+              onClose={() => setShowGestureDemo(false)}
+            />
+          )}
+        </>
+      )}
+
+      {/* ── Gesture Calibration & Kinematics Modal (Member 4) ── */}
+      <GestureCalibrationModal
+        isOpen={isCalibrationOpen}
+        onClose={() => setIsCalibrationOpen(false)}
+        settings={gestureSettings}
+        onUpdateSettings={setGestureSettings}
+        mode={gestureMode}
+        onModeChange={setGestureMode}
+        gestureFrame={tracking.frame}
+        fps={tracking.fps}
       />
     </div>
   )
