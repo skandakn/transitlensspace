@@ -16,6 +16,8 @@ export interface PredefinedObservation {
   lightCurve: LightCurvePoint[]
   description: string
   scientificContext: string
+  /** Optional FastAPI dataset identifier for a pre-downloaded NASA observation. */
+  backendDatasetId?: string
 }
 
 /**
@@ -103,13 +105,14 @@ export const PREDEFINED_OBSERVATIONS: PredefinedObservation[] = [
   {
     id: 'TOI-700',
     name: 'TOI-700 (TIC 261136679)',
-    subtitle: 'TESS Sector 11–13 Calibrated Cadence',
+    subtitle: 'TESS Sector 27 Bundled NASA Observation',
     category: 'transit',
     dataSourceType: 'CALIBRATED_DEMO',
-    dataSourceLabel: 'Calibrated Demo Data (TESS)',
+    dataSourceLabel: 'Bundled NASA MAST photometry (TESS)',
     expectedOutcome: 'POTENTIAL_TRANSIT',
     description: 'Quiet M-dwarf host in Dorado with verified multi-transit planetary signatures.',
-    scientificContext: 'Known host to TOI-700 d, an Earth-sized exoplanet in the habitable zone. Features regular periodic flux dips with ~3.74d period.',
+    scientificContext: 'NASA TESS Sector 27 photometry is bundled locally and is analyzed by the FastAPI/Lightkurve service. Any BLS dip is reported as a candidate, separate from the confirmed catalogue planets.',
+    backendDatasetId: 'toi-700-s27',
     star: {
       id: 'TIC-261136679',
       name: 'TOI-700',
@@ -128,18 +131,19 @@ export const PREDEFINED_OBSERVATIONS: PredefinedObservation[] = [
       numPoints: 1200,
       description: 'Quiet red dwarf host in Dorado. Known host of TOI-700 d, an Earth-sized planet inside the circumstellar habitable zone.'
     },
-    lightCurve: generateSyntheticLightCurve(3.742, 0.85, 0.0092, 3.25, 25, 30)
+    lightCurve: []
   },
   {
     id: 'Kepler-90',
     name: 'Kepler-90 (KIC 11442793)',
-    subtitle: 'Kepler Quarter 1–17 Public Data',
+    subtitle: 'Kepler Quarter 05 Bundled NASA Observation',
     category: 'transit',
     dataSourceType: 'REAL',
     dataSourceLabel: 'Real Astronomical Data (Kepler)',
     expectedOutcome: 'POTENTIAL_TRANSIT',
     description: 'G-type main-sequence star with 8 confirmed exoplanets mirroring the Solar System.',
-    scientificContext: 'Kepler archival photometry demonstrating strong periodic occultations at P = 4.25d with SNR > 24σ.',
+    scientificContext: 'NASA Kepler Quarter 05 PDC-SAP photometry is bundled locally and searched using Lightkurve Box Least Squares. The returned periodic dip is not a planet confirmation.',
+    backendDatasetId: 'kepler-90-q5',
     star: {
       id: 'KIC-11442793',
       name: 'Kepler-90',
@@ -158,15 +162,15 @@ export const PREDEFINED_OBSERVATIONS: PredefinedObservation[] = [
       numPoints: 1344,
       description: 'G-type star hosting 8 confirmed planets, demonstrating multi-transit architecture.'
     },
-    lightCurve: generateSyntheticLightCurve(4.25, 1.22, 0.0084, 4.1, 28, 30)
+    lightCurve: []
   },
   {
     id: 'TRAPPIST-1',
     name: 'TRAPPIST-1 (TIC 149603524)',
     subtitle: 'Spitzer / K2 7-Planet Resonant System',
     category: 'transit',
-    dataSourceType: 'REAL',
-    dataSourceLabel: 'Real Astronomical Data (Spitzer/K2)',
+    dataSourceType: 'CALIBRATED_DEMO',
+    dataSourceLabel: 'Calibrated demonstration curve (not archive photometry)',
     expectedOutcome: 'POTENTIAL_TRANSIT',
     description: 'Ultra-cool red dwarf in Aquarius with 7 transiting temperate Earth-sized planets.',
     scientificContext: 'Famous resonant chain system with multi-planet transits; prominent dips at P = 1.51d (TRAPPIST-1 b) with depth ~7,200 ppm.',
@@ -195,8 +199,8 @@ export const PREDEFINED_OBSERVATIONS: PredefinedObservation[] = [
     name: 'WASP-12 (TIC 38846515)',
     subtitle: 'TESS Fast Cadence Ultra-Hot Jupiter',
     category: 'transit',
-    dataSourceType: 'REAL',
-    dataSourceLabel: 'Real Astronomical Data (TESS)',
+    dataSourceType: 'CALIBRATED_DEMO',
+    dataSourceLabel: 'Calibrated demonstration curve (not archive photometry)',
     expectedOutcome: 'POTENTIAL_TRANSIT',
     description: 'Carbon-rich G0 host star undergoing tidally disrupted ultra-short hot Jupiter transits.',
     scientificContext: 'Extreme transit depth (~14,500 ppm) with a rapid 1.09-day period producing decisive high-SNR signal.',
@@ -225,8 +229,8 @@ export const PREDEFINED_OBSERVATIONS: PredefinedObservation[] = [
     name: 'HD 219134 (CTRL-99214)',
     subtitle: 'Quiet Photometric Control Star',
     category: 'flat',
-    dataSourceType: 'REAL',
-    dataSourceLabel: 'Real Astronomical Data (Spitzer/Ground)',
+    dataSourceType: 'CALIBRATED_DEMO',
+    dataSourceLabel: 'Calibrated demonstration curve (not archive photometry)',
     expectedOutcome: 'NO_TRANSIT',
     description: 'Bright, nearby K-type dwarf benchmark star with flat, unmodulated baseline flux.',
     scientificContext: 'A calibration control target. Photometric noise floor is purely Gaussian (RMS = 0.00065). Algorithm correctly confirms no transit dips.',
@@ -254,8 +258,8 @@ export const PREDEFINED_OBSERVATIONS: PredefinedObservation[] = [
     name: 'Proxima Centauri (FLARE-4081)',
     subtitle: 'High Stellar Noise & Flares',
     category: 'noisy',
-    dataSourceType: 'REAL',
-    dataSourceLabel: 'Real Astronomical Data (TESS High Dispersion)',
+    dataSourceType: 'CALIBRATED_DEMO',
+    dataSourceLabel: 'Calibrated demonstration curve (not archive photometry)',
     expectedOutcome: 'INCONCLUSIVE',
     description: 'Active flare host exhibiting extreme photometric noise and stochastic stellar flares.',
     scientificContext: 'Active red dwarf with stellar flares and high RMS dispersion (>0.004). Tested by the pipeline to yield Inconclusive.',

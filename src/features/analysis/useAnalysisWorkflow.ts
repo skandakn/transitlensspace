@@ -8,6 +8,7 @@ import type {
   AnalysisParameters
 } from '../../types'
 import { runTransitDetection, validateObservationData, DEFAULT_PARAMETERS } from './transitDetection'
+import { analyzeBundledObservation } from '../../services/transitApi'
 
 export interface UseAnalysisWorkflowOptions {
   star: StarObservation
@@ -15,6 +16,9 @@ export interface UseAnalysisWorkflowOptions {
   initialParameters?: Partial<AnalysisParameters>
   onAnalysisCompleted?: (result: AnalysisResult) => void
   onAnalysisFailed?: (error: Error) => void
+  /** Dataset served by the FastAPI/Lightkurve backend; takes precedence over browser demo analysis. */
+  backendDatasetId?: string
+  onBackendLightCurve?: (points: LightCurvePoint[]) => void
 }
 
 export interface UseAnalysisWorkflowReturn {
@@ -36,7 +40,9 @@ export function useAnalysisWorkflow({
   lightCurve,
   initialParameters,
   onAnalysisCompleted,
-  onAnalysisFailed
+  onAnalysisFailed,
+  backendDatasetId,
+  onBackendLightCurve
 }: UseAnalysisWorkflowOptions): UseAnalysisWorkflowReturn {
   const [status, setStatus] = useState<AnalysisStatus>('idle')
   const [progress, setProgress] = useState<AnalysisProgress | null>(null)
@@ -52,7 +58,7 @@ export function useAnalysisWorkflow({
     return validateObservationData(star, lightCurve)
   }, [star, lightCurve])
 
-  const canAnalyze = validation.valid && status !== 'running'
+  const canAnalyze = (backendDatasetId ? true : validation.valid) && status !== 'running'
 
   const runAnalysis = useCallback(async (): Promise<AnalysisResult | null> => {
     if (!validation.valid) {
@@ -72,6 +78,22 @@ export function useAnalysisWorkflow({
     })
 
     try {
+      if (backendDatasetId) {
+        setProgress({
+          status: 'running',
+          progressPercent: 40,
+          currentStage: 'Running Lightkurve Box Least Squares on bundled NASA photometry...',
+          elapsedTimeMs: 0
+        })
+        const backendOutput = await analyzeBundledObservation(backendDatasetId, parameters)
+        onBackendLightCurve?.(backendOutput.lightCurve)
+        setResult(backendOutput.result)
+        setStatus('completed')
+        setProgress(null)
+        onAnalysisCompleted?.(backendOutput.result)
+        return backendOutput.result
+      }
+
       const detectionResult = await runTransitDetection(
         star,
         lightCurve,
@@ -91,7 +113,7 @@ export function useAnalysisWorkflow({
       onAnalysisFailed?.(err instanceof Error ? err : new Error(errMessage))
       return null
     }
-  }, [star, lightCurve, parameters, validation, onAnalysisCompleted, onAnalysisFailed])
+  }, [star, lightCurve, parameters, validation, onAnalysisCompleted, onAnalysisFailed, backendDatasetId, onBackendLightCurve])
 
   const resetAnalysis = useCallback(() => {
     setStatus('idle')
