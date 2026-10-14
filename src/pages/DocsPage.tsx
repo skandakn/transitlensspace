@@ -63,6 +63,18 @@ export function DocsPage() {
                   <td className="py-2.5 px-3 text-slate-400 font-sans">Candidate vetting, false alarm tests, PDF/JSON export</td>
                   <td className="py-2.5 px-3 text-cyan-400">feature/results</td>
                 </tr>
+                <tr>
+                  <td className="py-2.5 px-3 text-sky-400 font-bold">Member 5 (Detection Lead)</td>
+                  <td className="py-2.5 px-3 text-slate-200">src/features/analysis/detection/</td>
+                  <td className="py-2.5 px-3 text-slate-400 font-sans">Box Least Squares (BLS) pipeline, dip detection, period grid search</td>
+                  <td className="py-2.5 px-3 text-sky-400">feature/detection</td>
+                </tr>
+                <tr>
+                  <td className="py-2.5 px-3 text-fuchsia-400 font-bold">Member 6 (Analysis Experience)</td>
+                  <td className="py-2.5 px-3 text-slate-200">src/features/analysis/</td>
+                  <td className="py-2.5 px-3 text-slate-400 font-sans">Interactive analysis workflow, Results Panel, derived telemetry & states</td>
+                  <td className="py-2.5 px-3 text-fuchsia-400">feature/analysis-results</td>
+                </tr>
               </tbody>
             </table>
           </div>

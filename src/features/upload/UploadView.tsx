@@ -5,6 +5,8 @@ import { Button } from '../../components/ui/Button'
 import { Badge } from '../../components/ui/Badge'
 import type { LightCurvePoint } from '../../types'
 
+import { generateSyntheticLightCurve } from '../../data/mockData'
+
 export interface UploadViewProps {
   onLightCurveLoaded?: (points: LightCurvePoint[], filename: string) => void
 }
@@ -25,8 +27,11 @@ export function UploadView({ onLightCurveLoaded }: UploadViewProps) {
   const [uploadStatus, setUploadStatus] = useState<'idle' | 'success' | 'error'>('idle')
 
   const handleSimulateDemoUpload = () => {
-    setSelectedFileName('TOI-700_sector11_lc_clean.csv')
+    const filename = 'TOI-700_sector11_lc_clean.csv'
+    setSelectedFileName(filename)
     setUploadStatus('success')
+    const samplePoints = generateSyntheticLightCurve(37.426, 0.85, 0.00092, 3.25, 25, 30)
+    onLightCurveLoaded?.(samplePoints, filename)
   }
 
   return (
