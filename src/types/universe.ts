@@ -2,9 +2,8 @@ import type { StarObservation, SpaceMission } from './index'
 
 /**
  * 3D Universe Explorer - Shared Celestial Types
- * Coordinated with Members 2-4 for astronomical registry integration.
+ * Coordinated with Members 1, 2, 3, 4 for 3D astronomical universe & interaction.
  */
-
 export type CelestialObjectType = 'star' | 'planet' | 'system' | 'nebula' | 'galaxy'
 
 export type SpectralClass = 'O' | 'B' | 'A' | 'F' | 'G' | 'K' | 'M' | 'D'
