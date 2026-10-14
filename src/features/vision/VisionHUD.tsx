@@ -9,8 +9,6 @@ import { OnboardingModal } from './OnboardingModal'
 import { PrivacyModal } from './PrivacyModal'
 import type { HandTrackingState, VisionHUDProps } from './types'
 
-const ONBOARDING_STORAGE_KEY = 'transitlens_vision_onboarding_shown'
-
 export function VisionHUD({
   handTracking: externalHandTracking,
   navigationMode = 'orbit',
@@ -63,16 +61,33 @@ export function VisionHUD({
     },
   })
 
-  // 5. Emit subtle head orientation to parent for camera parallax
+  // 5. Emit subtle head orientation to parent for camera parallax (thresholded for performance)
+  const lastEmittedOrientRef = useRef<{ yaw: number; pitch: number }>({ yaw: 0, pitch: 0 })
   useEffect(() => {
-    if (onHeadOrient) {
-      if (faceState.headAdjustmentsEnabled && faceState.isFaceDetected) {
-        onHeadOrient(faceState.headOrientation)
-      } else {
-        onHeadOrient({ yaw: 0, pitch: 0, roll: 0 })
-      }
+    if (!onHeadOrient) return
+    const isEnabled = faceState.headAdjustmentsEnabled && faceState.isFaceDetected
+    const targetYaw = isEnabled ? Math.round(faceState.headOrientation.yaw * 10) / 10 : 0
+    const targetPitch = isEnabled ? Math.round(faceState.headOrientation.pitch * 10) / 10 : 0
+
+    const dy = Math.abs(targetYaw - lastEmittedOrientRef.current.yaw)
+    const dp = Math.abs(targetPitch - lastEmittedOrientRef.current.pitch)
+
+    if (
+      dy >= 0.4 ||
+      dp >= 0.4 ||
+      (!isEnabled &&
+        (lastEmittedOrientRef.current.yaw !== 0 || lastEmittedOrientRef.current.pitch !== 0))
+    ) {
+      lastEmittedOrientRef.current = { yaw: targetYaw, pitch: targetPitch }
+      onHeadOrient({ yaw: targetYaw, pitch: targetPitch, roll: 0 })
     }
-  }, [faceState.headOrientation, faceState.headAdjustmentsEnabled, faceState.isFaceDetected, onHeadOrient])
+  }, [
+    faceState.headOrientation.yaw,
+    faceState.headOrientation.pitch,
+    faceState.headAdjustmentsEnabled,
+    faceState.isFaceDetected,
+    onHeadOrient,
+  ])
 
   // 6. Handle Pinch Gesture -> Trigger celestial selection
   const lastPinchRef = useRef<boolean>(false)

@@ -54,6 +54,20 @@ export function CameraOverlay({
 }: CameraOverlayProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
 
+  // Ensure video element receives the stream as soon as it mounts or stream changes
+  useEffect(() => {
+    const video = videoRef.current
+    if (video && cameraState.stream) {
+      if (video.srcObject !== cameraState.stream) {
+        video.srcObject = cameraState.stream
+        video.onloadedmetadata = () => {
+          video.play().catch(() => {})
+        }
+        video.play().catch(() => {})
+      }
+    }
+  }, [cameraState.stream, cameraState.isActive, videoRef])
+
   // Draw HUD face and hand landmarks onto overlay canvas
   useEffect(() => {
     const canvas = canvasRef.current
@@ -264,6 +278,9 @@ export function CameraOverlay({
             </button>
           </div>
         </div>
+
+        {/* Keep video element rendered so live tracking never resets when minimized */}
+        <video ref={videoRef} playsInline muted autoPlay className="hidden" />
       </div>
     )
   }
@@ -350,15 +367,35 @@ export function CameraOverlay({
             playsInline
             muted
             autoPlay
-            className="absolute inset-0 w-full h-full object-cover transform -scale-x-100"
+            className={`absolute inset-0 w-full h-full object-cover transform -scale-x-100 ${
+              isDemoMode ? 'hidden' : 'block'
+            }`}
           />
+
+          {/* Demo Mode Virtual Cockpit Scanner Backdrop */}
+          {isDemoMode && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-br from-[#050914] via-[#091124] to-[#040813] text-cyan-400 overflow-hidden">
+              <div className="absolute inset-0 opacity-20 bg-[radial-gradient(#06b6d4_1px,transparent_1px)] [background-size:16px_16px]" />
+              <div className="relative z-0 flex flex-col items-center gap-1.5 text-center p-3 pointer-events-none">
+                <span className="w-9 h-9 rounded-full border border-cyan-500/40 bg-cyan-950/70 flex items-center justify-center text-cyan-300 shadow-[0_0_15px_rgba(6,182,212,0.3)]">
+                  <Sparkles className="w-4 h-4 animate-pulse" />
+                </span>
+                <span className="text-[10px] font-mono font-bold text-cyan-300 tracking-wider uppercase">
+                  SIMULATION PILOT
+                </span>
+                <span className="text-[9px] font-mono text-slate-400">
+                  Virtual optical telemetry active
+                </span>
+              </div>
+            </div>
+          )}
 
           {/* Canvas for Landmark Overlay */}
           <canvas
             ref={canvasRef}
             width={320}
             height={240}
-            className="absolute inset-0 w-full h-full pointer-events-none"
+            className="absolute inset-0 w-full h-full pointer-events-none z-10"
           />
 
           {/* Corner Grid Crosshairs (Sci-Fi Aesthetic) */}
@@ -370,8 +407,8 @@ export function CameraOverlay({
           </div>
 
           {/* Loading / Model Initializing Spinner */}
-          {cameraState.isLoading && (
-            <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-slate-950/80 backdrop-blur-sm text-cyan-400 gap-2">
+          {cameraState.isLoading && !cameraState.stream && !isDemoMode && (
+            <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-slate-950/80 backdrop-blur-sm text-cyan-400 gap-2">
               <div className="w-6 h-6 border-2 border-cyan-500/30 border-t-cyan-400 rounded-full animate-spin" />
               <span className="text-[10px] text-cyan-300 tracking-wider">
                 Starting Vision Engine...
