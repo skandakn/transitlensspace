@@ -13,7 +13,9 @@ import {
   Search,
   X,
   Sun,
-  Globe
+  Globe,
+  Play,
+  Pause
 } from 'lucide-react'
 import { Starfield } from './Starfield'
 import { Nebula, DistantGalaxy } from './Nebula'
@@ -170,7 +172,7 @@ export function UniverseScene({
   initialCameraPosition = [0, 40, 110],
   onAnalyzeLightCurve
 }: ExtendedUniverseSceneProps) {
-  const [hasWebGL, setHasWebGL] = useState<boolean>(true)
+  const [hasWebGL] = useState<boolean>(() => checkWebGLSupport())
   const [showOrbits, setShowOrbits] = useState(initialShowOrbits)
   const [showLabels, setShowLabels] = useState(initialShowLabels)
   const [enableMotion, setEnableMotion] = useState(initialEnableMotion)
@@ -186,10 +188,6 @@ export function UniverseScene({
   const [selectedPlanetId, setSelectedPlanetId] = useState<string | undefined>(controlledPlanetId)
 
   const searchContainerRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    setHasWebGL(checkWebGLSupport())
-  }, [])
 
   // Synchronize incoming controlled target
   useEffect(() => {
@@ -476,6 +474,20 @@ export function UniverseScene({
         >
           <Eye className="w-3 h-3" />
           <span className="hidden sm:inline">Labels</span>
+        </button>
+
+        {/* Real-Time Motion Toggle */}
+        <button
+          onClick={() => setEnableMotion(!enableMotion)}
+          className={`px-2.5 py-1.5 rounded-lg border text-xs font-mono flex items-center gap-1.5 transition-colors cursor-pointer ${
+            enableMotion
+              ? 'bg-emerald-950/70 border-emerald-500/50 text-emerald-300'
+              : 'bg-[#070b14]/85 border-slate-750 text-slate-400'
+          }`}
+          title="Toggle orbital simulation motion"
+        >
+          {enableMotion ? <Pause className="w-3 h-3 text-emerald-400" /> : <Play className="w-3 h-3 text-slate-400" />}
+          <span className="hidden sm:inline">{enableMotion ? 'Motion' : 'Paused'}</span>
         </button>
       </div>
 
