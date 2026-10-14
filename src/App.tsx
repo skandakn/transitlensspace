@@ -566,14 +566,26 @@ export function App() {
     return [...bundledWithObs, ...adaptedCustom]
   }, [stars])
   const handleSelectStar = (star: StarObservation) => {
-    const matched = PREDEFINED_OBSERVATIONS.find(
-      (o) =>
-        o.id.toLowerCase() === star.id.toLowerCase() ||
-        o.star.id.toLowerCase() === star.id.toLowerCase() ||
-        o.star.name.toLowerCase() === star.name.toLowerCase() ||
-        star.name.toLowerCase().includes(o.id.toLowerCase()) ||
-        o.name.toLowerCase().includes(star.name.toLowerCase())
-    )
+    const starIdClean = star.id.toLowerCase().replace(/[^a-z0-9]/g, '')
+    const starNameClean = star.name.toLowerCase().replace(/[^a-z0-9]/g, '')
+
+    const matched = PREDEFINED_OBSERVATIONS.find((o) => {
+      const oIdClean = o.id.toLowerCase().replace(/[^a-z0-9]/g, '')
+      const oStarIdClean = o.star.id.toLowerCase().replace(/[^a-z0-9]/g, '')
+      const oStarNameClean = o.star.name.toLowerCase().replace(/[^a-z0-9]/g, '')
+      const oNameClean = o.name.toLowerCase().replace(/[^a-z0-9]/g, '')
+
+      return (
+        oIdClean === starIdClean ||
+        oStarIdClean === starIdClean ||
+        oStarNameClean === starNameClean ||
+        oNameClean === starNameClean ||
+        oIdClean === starNameClean ||
+        starNameClean.includes(oIdClean) ||
+        oNameClean.includes(starNameClean) ||
+        (star.catalogId && o.star.catalogId && o.star.catalogId.toLowerCase() === star.catalogId.toLowerCase())
+      )
+    })
     if (matched) {
       handleSelectObservation(matched.id)
     } else {

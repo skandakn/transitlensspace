@@ -367,7 +367,7 @@ export function StarSystem({
       ))}
 
       {/* Native WebGL 3D Billboard Sprite Label */}
-      {showLabels && (isSelected || activeHover) && (
+      {showLabels && (
         <StarSpriteLabel
           name={system.name}
           spectralType={system.spectralType}

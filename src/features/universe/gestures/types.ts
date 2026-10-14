@@ -50,7 +50,7 @@ export const DEFAULT_GESTURE_SETTINGS: GestureNavigationSettings = {
   movementDeadzone: 0.005,
   selectionCooldownMs: 650,
   minHoverFramesBeforeSelect: 3,
-  flightLerpSpeed: 3.2,
+  flightLerpSpeed: 4.6,
   invertX: false,
   invertY: false
 }
