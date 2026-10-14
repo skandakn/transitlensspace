@@ -1,0 +1,67 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --font-mono: 'JetBrains Mono', 'Fira Code', ui-monospace, SFMono-Regular, monospace;
+    
+    /* Cosmic Palette Tokens */
+    --color-space-deep: #050811;
+    --color-space-navy: #070b14;
+    --color-space-card: #0c1322;
+    --color-cyan-glow: #06b6d4;
+    --color-violet-accent: #8b5cf6;
+
+    /* Dashboard surface and semantic tokens */
+    --canvas: #080e18;
+    --sidebar: #0a111c;
+    --surface: #0d1724;
+    --line: #1e2b3a;
+    --text-primary: #e5edf6;
+    --text-muted: #8a9aae;
+    --cyan: #59d6e2;
+    --violet: #aaa0ed;
+    --amber: #dfb16f;
+    --mono: var(--font-mono);
+  }
+
+  * {
+    border-color: #1e293b;
+  }
+
+  body {
+    background-color: #070b14;
+    color: #e2e8f0;
+    font-family: var(--font-sans);
+    min-height: 100vh;
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Custom astronomy scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: #090e1a;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #1e293b;
+    border-radius: 3px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #0ea5e9;
+  }
+}
+
+/* Cosmic telemetry animations */
+@keyframes pulse-slow {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.animate-pulse-slow {
+  animation: pulse-slow 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
