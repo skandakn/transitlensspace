@@ -11,7 +11,6 @@ import type { HandTrackingState, VisionHUDProps } from './types'
 
 export function VisionHUD({
   handTracking: externalHandTracking,
-  navigationMode = 'orbit',
   hasSelectedTarget = false,
   onPinchSelect,
   onHandNavigate,
@@ -159,10 +158,7 @@ export function VisionHUD({
       >
         <GestureHUD
           handState={handState}
-          faceState={faceState}
-          navigationMode={navigationMode}
           isCameraActive={cameraState.isActive}
-          onOpenGuide={() => setIsOnboardingOpen(true)}
         />
       </div>
 
@@ -177,8 +173,6 @@ export function VisionHUD({
         onToggleMinimize={toggleMinimize}
         onCyclePosition={cyclePosition}
         onToggleHeadAdjustments={toggleHeadAdjustments}
-        onOpenGuide={() => setIsOnboardingOpen(true)}
-        onOpenPrivacy={() => setIsPrivacyOpen(true)}
         onEnableDemoMode={enableDemoMode}
       />
 

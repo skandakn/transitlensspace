@@ -1,6 +1,5 @@
 import React, { useRef, useEffect } from 'react'
 import {
-  Camera,
   CameraOff,
   Minimize2,
   Maximize2,
@@ -8,10 +7,8 @@ import {
   Compass,
   AlertCircle,
   Sparkles,
-  HelpCircle,
   Eye,
   EyeOff,
-  ShieldCheck,
 } from 'lucide-react'
 import type { CameraPosition, CameraState, FaceTrackingState, HandTrackingState } from './types'
 
@@ -25,8 +22,6 @@ export interface CameraOverlayProps {
   onToggleMinimize: () => void
   onCyclePosition: () => void
   onToggleHeadAdjustments: () => void
-  onOpenGuide: () => void
-  onOpenPrivacy: () => void
   onEnableDemoMode: () => void
   className?: string
 }
@@ -48,8 +43,6 @@ export function CameraOverlay({
   onToggleMinimize,
   onCyclePosition,
   onToggleHeadAdjustments,
-  onOpenGuide,
-  onOpenPrivacy,
   onEnableDemoMode,
   className = '',
 }: CameraOverlayProps) {
@@ -160,43 +153,7 @@ export function CameraOverlay({
 
   // ── INACTIVE CAMERA: Sleek Launch Capsule ──
   if (!cameraState.isActive) {
-    return (
-      <div
-        className={`absolute z-30 transition-all duration-300 pointer-events-auto ${
-          POSITION_STYLES[cameraState.position]
-        } ${className}`}
-      >
-        <div className="flex items-center gap-1.5 p-1 rounded-xl bg-[#070b14]/90 border border-slate-750 backdrop-blur-md shadow-lg">
-          <button
-            onClick={onToggleCamera}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-slate-950 text-xs font-bold font-mono transition-all cursor-pointer shadow-[0_0_14px_rgba(6,182,212,0.4)]"
-            title="Start webcam and gesture tracking"
-            aria-label="Enable Camera"
-          >
-            <Camera className="w-3.5 h-3.5 text-slate-950" />
-            <span>Enable Camera</span>
-          </button>
-
-          <button
-            onClick={onOpenPrivacy}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-cyan-300 hover:bg-slate-800/60 transition-colors cursor-pointer"
-            title="Camera & Vision Privacy Guarantees"
-            aria-label="Open privacy guarantees"
-          >
-            <ShieldCheck className="w-4 h-4" />
-          </button>
-
-          <button
-            onClick={onOpenGuide}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-cyan-300 hover:bg-slate-800/60 transition-colors cursor-pointer"
-            title="Flight gesture guide & onboarding"
-            aria-label="Open flight gesture guide"
-          >
-            <HelpCircle className="w-4 h-4" />
-          </button>
-        </div>
-      </div>
-    )
+    return null
   }
 
   // ── CAMERA ERROR / PERMISSION DENIED ──

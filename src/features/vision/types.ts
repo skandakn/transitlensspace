@@ -102,8 +102,6 @@ export interface CameraState {
 export interface VisionHUDProps {
   /** Consumed tracking state from Member 1 */
   handTracking?: HandTrackingState
-  /** Consumed navigation mode from Member 2 ('orbit' | 'free') */
-  navigationMode?: string
   /** Whether a target object is currently selected and displaying a reticle */
   hasSelectedTarget?: boolean
   /** Callback when user selects a target via pinch gesture */

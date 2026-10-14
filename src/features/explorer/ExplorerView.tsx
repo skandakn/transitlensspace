@@ -25,7 +25,7 @@
 import { useState, useMemo, useEffect } from 'react'
 import { UniverseScene, starObservationsToCelestialObjects } from '../universe'
 import { ExplorerHUD } from './ExplorerHUD'
-import { useHandTracking, HandTrackingOverlay, HandTrackingDemo } from '../hand-tracking'
+import { useHandTracking } from '../hand-tracking'
 import { GestureCalibrationModal } from './GestureCalibrationModal'
 import {
   DEFAULT_GESTURE_SETTINGS,
@@ -75,9 +75,6 @@ export function ExplorerView({
   })
   // Track whether info panel is open (closed by user vs. no selection)
   const [infoPanelOpen, setInfoPanelOpen] = useState(true)
-  // Hand tracking visibility & telemetry demo panel (Member 1)
-  const [showHandTracking, setShowHandTracking] = useState(false)
-  const [showGestureDemo, setShowGestureDemo] = useState(false)
   // Gesture navigation and calibration state (Member 2, Member 3 & Member 4)
   const [gestureMode, setGestureMode] = useState<GestureNavigationMode>('explore')
   const [gestureSettings, setGestureSettings] = useState<GestureNavigationSettings>(DEFAULT_GESTURE_SETTINGS)
@@ -136,7 +133,7 @@ export function ExplorerView({
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       if ((e.target as HTMLElement)?.tagName === 'INPUT') return
-      if (e.key === ' ' && (showHandTracking || tracking.isCameraActive)) {
+      if (e.key === ' ' && tracking.isCameraActive) {
         e.preventDefault()
         setGestureMode((prev) => (prev === 'paused' ? 'explore' : 'paused'))
       } else if ((e.key === 'c' || e.key === 'C') && !e.ctrlKey && !e.metaKey) {
@@ -146,7 +143,7 @@ export function ExplorerView({
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [showHandTracking, tracking.isCameraActive])
+  }, [tracking.isCameraActive])
 
   const defaultCelestialObjects = useMemo(() => starObservationsToCelestialObjects(stars), [stars])
   const celestialObjects = customCelestialObjects || defaultCelestialObjects
@@ -271,16 +268,6 @@ export function ExplorerView({
         }
         infoPanelOpen={infoPanelOpen}
         onToggleInfoPanel={setInfoPanelOpen}
-        showHandTracking={showHandTracking}
-        onToggleHandTracking={() => {
-          if (!tracking.isCameraActive) {
-            void tracking.enableCamera()
-          }
-          setShowHandTracking((prev) => !prev)
-        }}
-        gestureMode={gestureMode}
-        onGestureModeChange={setGestureMode}
-        onOpenCalibration={() => setIsCalibrationOpen(true)}
         isCameraActive={tracking.isCameraActive}
         isCameraLoading={tracking.isLoading}
         cameraError={tracking.errorMessage}
@@ -296,22 +283,6 @@ export function ExplorerView({
         onPinchSelect={handlePinchSelect}
         onHandNavigate={handleHandNavigate}
       />
-
-      {/* ── Hand Tracking Overlay & Live Gesture Inspector (Member 1) ── */}
-      {showHandTracking && (
-        <>
-          <HandTrackingOverlay
-            tracking={tracking}
-            onToggleDemoPanel={() => setShowGestureDemo((v) => !v)}
-          />
-          {showGestureDemo && (
-            <HandTrackingDemo
-              tracking={tracking}
-              onClose={() => setShowGestureDemo(false)}
-            />
-          )}
-        </>
-      )}
 
       {/* ── Gesture Calibration & Kinematics Modal (Member 4) ── */}
       <GestureCalibrationModal

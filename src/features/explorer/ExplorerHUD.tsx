@@ -22,7 +22,7 @@ import { ObjectLabel } from './ObjectLabel'
 import { VisionHUD, type HandTrackingState, type HeadOrientation } from '../vision'
 import type { ExplorerMode } from './types'
 import type { StarObservation } from '../../types'
-import type { GestureNavigationMode, GestureTarget } from '../universe/gestures/types'
+import type { GestureTarget } from '../universe/gestures/types'
 import type { GestureFrame } from '../../types/gestures'
 import './hud.css'
 
@@ -55,16 +55,6 @@ export interface ExplorerHUDProps {
   infoPanelOpen: boolean
   /** Toggle info panel open / close */
   onToggleInfoPanel: (open: boolean) => void
-  /** Whether the hand tracking overlay is active */
-  showHandTracking?: boolean
-  /** Toggle hand tracking overlay */
-  onToggleHandTracking?: () => void
-  /** Gesture navigation mode */
-  gestureMode?: GestureNavigationMode
-  /** Callback when gesture mode changes */
-  onGestureModeChange?: (mode: GestureNavigationMode) => void
-  /** Callback to open gesture calibration modal */
-  onOpenCalibration?: () => void
   /** True when webcam is actively running */
   isCameraActive?: boolean
   /** Real-time gesture frame data */
@@ -113,11 +103,6 @@ export function ExplorerHUD({
   onToggleQuality,
   infoPanelOpen,
   onToggleInfoPanel,
-  showHandTracking,
-  onToggleHandTracking,
-  gestureMode,
-  onGestureModeChange,
-  onOpenCalibration,
   isCameraActive,
   isCameraLoading,
   cameraError,
@@ -192,7 +177,6 @@ export function ExplorerHUD({
       {handTracking && (
         <VisionHUD
           handTracking={handTracking}
-          navigationMode={mode}
           hasSelectedTarget={Boolean(selectedStar && selectedStar.id !== '—')}
           onPinchSelect={onPinchSelect}
           onHandNavigate={onHandNavigate}
@@ -212,11 +196,6 @@ export function ExplorerHUD({
         <HudTopBar
           mode={mode}
           onModeChange={onModeChange}
-          showHandTracking={showHandTracking}
-          onToggleHandTracking={onToggleHandTracking}
-          gestureMode={gestureMode}
-          onGestureModeChange={onGestureModeChange}
-          onOpenCalibration={onOpenCalibration}
           isCameraActive={isCameraActive}
           isCameraLoading={isCameraLoading}
           onToggleCamera={onToggleCamera}
