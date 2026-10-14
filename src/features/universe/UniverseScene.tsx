@@ -167,16 +167,22 @@ export function UniverseScene({
   showOrbits: initialShowOrbits = true,
   showLabels: initialShowLabels = true,
   enableMotion: initialEnableMotion = true,
+  hideDefaultControls = false,
   quality: initialQuality = 'high',
   className = '',
   initialCameraPosition = [0, 40, 110],
   onAnalyzeLightCurve
 }: ExtendedUniverseSceneProps) {
   const [hasWebGL] = useState<boolean>(() => checkWebGLSupport())
-  const [showOrbits, setShowOrbits] = useState(initialShowOrbits)
-  const [showLabels, setShowLabels] = useState(initialShowLabels)
-  const [enableMotion, setEnableMotion] = useState(initialEnableMotion)
-  const [quality, setQuality] = useState<'low' | 'high'>(initialQuality === 'low' ? 'low' : 'high')
+  const [internalShowOrbits, setInternalShowOrbits] = useState(initialShowOrbits)
+  const [internalShowLabels, setInternalShowLabels] = useState(initialShowLabels)
+  const [internalEnableMotion, setInternalEnableMotion] = useState(initialEnableMotion)
+  const [internalQuality, setInternalQuality] = useState<'low' | 'high'>(initialQuality === 'low' ? 'low' : 'high')
+
+  const showOrbits = hideDefaultControls ? initialShowOrbits : internalShowOrbits
+  const showLabels = hideDefaultControls ? initialShowLabels : internalShowLabels
+  const enableMotion = hideDefaultControls ? initialEnableMotion : internalEnableMotion
+  const quality = hideDefaultControls ? (initialQuality === 'low' ? 'low' : 'high') : internalQuality
 
   // Search and Camera Focus State
   const [searchQuery, setSearchQuery] = useState('')
@@ -354,191 +360,195 @@ export function UniverseScene({
         </Canvas>
       </Suspense>
 
-      {/* Floating 3D HUD Toolbar */}
-      <div className="absolute top-4 left-4 z-20 flex flex-wrap items-center gap-2 max-w-[calc(100%-2rem)]">
-        <div className="px-3 py-1.5 rounded-lg bg-[#070b14]/90 border border-slate-750 backdrop-blur-md flex items-center gap-2 text-xs font-mono text-cyan-300">
-          <Compass className="w-3.5 h-3.5 text-cyan-400" />
-          <span className="hidden sm:inline">3D Celestial Universe</span>
-        </div>
+      {/* Floating 3D HUD Toolbar & Inspector (fallback when external HUD is not managing controls) */}
+      {!hideDefaultControls && (
+        <>
+          <div className="absolute top-4 left-4 z-20 flex flex-wrap items-center gap-2 max-w-[calc(100%-2rem)]">
+            <div className="px-3 py-1.5 rounded-lg bg-[#070b14]/90 border border-slate-750 backdrop-blur-md flex items-center gap-2 text-xs font-mono text-cyan-300">
+              <Compass className="w-3.5 h-3.5 text-cyan-400" />
+              <span className="hidden sm:inline">3D Celestial Universe</span>
+            </div>
 
-        {/* Catalog Search Input & Results Dropdown */}
-        <div ref={searchContainerRef} className="relative">
-          <div className="flex items-center rounded-lg bg-[#070b14]/90 border border-slate-700/80 px-2.5 py-1 backdrop-blur-md focus-within:border-cyan-400 transition-colors">
-            <Search className="w-3.5 h-3.5 text-slate-400 mr-2 shrink-0" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => {
-                setSearchQuery(e.target.value)
-                setIsSearchOpen(true)
-              }}
-              onFocus={() => setIsSearchOpen(true)}
-              placeholder="Search catalog (e.g. TOI-700, Kepler-90)..."
-              className="bg-transparent text-xs text-white placeholder-slate-400 focus:outline-none w-44 sm:w-56 font-mono"
-              aria-label="Search celestial catalog"
-            />
-            {searchQuery && (
-              <button
-                onClick={() => {
-                  setSearchQuery('')
-                  setIsSearchOpen(false)
-                }}
-                className="text-slate-400 hover:text-white ml-1 cursor-pointer"
-                aria-label="Clear search"
-              >
-                <X className="w-3 h-3" />
-              </button>
-            )}
-          </div>
+            {/* Catalog Search Input & Results Dropdown */}
+            <div ref={searchContainerRef} className="relative">
+              <div className="flex items-center rounded-lg bg-[#070b14]/90 border border-slate-700/80 px-2.5 py-1 backdrop-blur-md focus-within:border-cyan-400 transition-colors">
+                <Search className="w-3.5 h-3.5 text-slate-400 mr-2 shrink-0" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => {
+                    setSearchQuery(e.target.value)
+                    setIsSearchOpen(true)
+                  }}
+                  onFocus={() => setIsSearchOpen(true)}
+                  placeholder="Search catalog (e.g. TOI-700, Kepler-90)..."
+                  className="bg-transparent text-xs text-white placeholder-slate-400 focus:outline-none w-44 sm:w-56 font-mono"
+                  aria-label="Search celestial catalog"
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => {
+                      setSearchQuery('')
+                      setIsSearchOpen(false)
+                    }}
+                    className="text-slate-400 hover:text-white ml-1 cursor-pointer"
+                    aria-label="Clear search"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                )}
+              </div>
 
-          {/* Dropdown Menu */}
-          {isSearchOpen && searchResults.length > 0 && (
-            <div className="absolute left-0 mt-1 w-72 max-h-64 overflow-y-auto rounded-xl bg-[#070b14]/98 border border-cyan-800/60 shadow-2xl backdrop-blur-xl z-50 divide-y divide-slate-800/60 font-mono text-xs">
-              {searchResults.map((item) => (
-                <div
-                  key={`${item.type}-${item.id}`}
-                  onClick={() => handleSearchResultClick(item)}
-                  className="p-2.5 hover:bg-slate-800/70 cursor-pointer flex items-center justify-between transition-colors group"
-                >
-                  <div className="flex items-center gap-2 truncate">
-                    {item.type === 'star' ? (
-                      <Sun className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                    ) : (
-                      <Globe className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
-                    )}
-                    <div className="truncate">
-                      <span className="font-bold text-white group-hover:text-cyan-300 block truncate">
-                        {item.name}
-                      </span>
-                      <span className="text-[10px] text-slate-400">
-                        {item.type === 'star'
-                          ? `${item.star.spectralType || 'Star'} · ${item.star.planets?.length || 0} Planets`
-                          : `Host: ${item.hostStarName}`}
+              {/* Dropdown Menu */}
+              {isSearchOpen && searchResults.length > 0 && (
+                <div className="absolute left-0 mt-1 w-72 max-h-64 overflow-y-auto rounded-xl bg-[#070b14]/98 border border-cyan-800/60 shadow-2xl backdrop-blur-xl z-50 divide-y divide-slate-800/60 font-mono text-xs">
+                  {searchResults.map((item) => (
+                    <div
+                      key={`${item.type}-${item.id}`}
+                      onClick={() => handleSearchResultClick(item)}
+                      className="p-2.5 hover:bg-slate-800/70 cursor-pointer flex items-center justify-between transition-colors group"
+                    >
+                      <div className="flex items-center gap-2 truncate">
+                        {item.type === 'star' ? (
+                          <Sun className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                        ) : (
+                          <Globe className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                        )}
+                        <div className="truncate">
+                          <span className="font-bold text-white group-hover:text-cyan-300 block truncate">
+                            {item.name}
+                          </span>
+                          <span className="text-[10px] text-slate-400">
+                            {item.type === 'star'
+                              ? `${item.star.spectralType || 'Star'} · ${item.star.planets?.length || 0} Planets`
+                              : `Host: ${item.hostStarName}`}
+                          </span>
+                        </div>
+                      </div>
+                      <span className={`text-[9px] uppercase px-1.5 py-0.5 rounded font-mono shrink-0 ml-2 ${
+                        item.type === 'star'
+                          ? 'bg-amber-500/10 text-amber-300 border border-amber-500/20'
+                          : 'bg-cyan-500/10 text-cyan-300 border border-cyan-500/20'
+                      }`}>
+                        {item.type}
                       </span>
                     </div>
-                  </div>
-                  <span className={`text-[9px] uppercase px-1.5 py-0.5 rounded font-mono shrink-0 ml-2 ${
-                    item.type === 'star'
-                      ? 'bg-amber-500/10 text-amber-300 border border-amber-500/20'
-                      : 'bg-cyan-500/10 text-cyan-300 border border-cyan-500/20'
-                  }`}>
-                    {item.type}
-                  </span>
+                  ))}
                 </div>
-              ))}
+              )}
             </div>
-          )}
-        </div>
 
-        {/* Reset Camera View Button */}
-        <button
-          onClick={handleResetCamera}
-          className="px-2.5 py-1.5 rounded-lg bg-[#070b14]/85 hover:bg-slate-800/80 border border-slate-750 text-slate-300 hover:text-cyan-300 text-xs font-mono flex items-center gap-1.5 transition-colors cursor-pointer"
-          title="Reset Camera View to Default"
-          aria-label="Reset Camera View"
-        >
-          <RotateCcw className="w-3 h-3 text-cyan-400" />
-          <span className="hidden sm:inline">Reset View</span>
-        </button>
+            {/* Reset Camera View Button */}
+            <button
+              onClick={handleResetCamera}
+              className="px-2.5 py-1.5 rounded-lg bg-[#070b14]/85 hover:bg-slate-800/80 border border-slate-750 text-slate-300 hover:text-cyan-300 text-xs font-mono flex items-center gap-1.5 transition-colors cursor-pointer"
+              title="Reset Camera View to Default"
+              aria-label="Reset Camera View"
+            >
+              <RotateCcw className="w-3 h-3 text-cyan-400" />
+              <span className="hidden sm:inline">Reset View</span>
+            </button>
 
-        {/* Quality Mode Toggle */}
-        <button
-          onClick={() => setQuality(quality === 'high' ? 'low' : 'high')}
-          className="px-2.5 py-1.5 rounded-lg bg-[#070b14]/85 hover:bg-slate-800/80 border border-slate-750 text-slate-300 text-xs font-mono flex items-center gap-1.5 transition-colors cursor-pointer"
-          title="Toggle high performance mode for student laptops"
-        >
-          <Sliders className="w-3 h-3 text-cyan-400" />
-          <span className="hidden md:inline">{quality === 'high' ? 'High' : 'Eco'}</span>
-        </button>
+            {/* Quality Mode Toggle */}
+            <button
+              onClick={() => setInternalQuality(quality === 'high' ? 'low' : 'high')}
+              className="px-2.5 py-1.5 rounded-lg bg-[#070b14]/85 hover:bg-slate-800/80 border border-slate-750 text-slate-300 text-xs font-mono flex items-center gap-1.5 transition-colors cursor-pointer"
+              title="Toggle high performance mode for student laptops"
+            >
+              <Sliders className="w-3 h-3 text-cyan-400" />
+              <span className="hidden md:inline">{quality === 'high' ? 'High' : 'Eco'}</span>
+            </button>
 
-        {/* Orbit Lines Toggle */}
-        <button
-          onClick={() => setShowOrbits(!showOrbits)}
-          className={`px-2.5 py-1.5 rounded-lg border text-xs font-mono flex items-center gap-1.5 transition-colors cursor-pointer ${
-            showOrbits
-              ? 'bg-cyan-950/70 border-cyan-500/50 text-cyan-300'
-              : 'bg-[#070b14]/85 border-slate-750 text-slate-400'
-          }`}
-          title="Toggle planetary orbit lines"
-        >
-          <Layers className="w-3 h-3" />
-          <span className="hidden sm:inline">Orbits</span>
-        </button>
+            {/* Orbit Lines Toggle */}
+            <button
+              onClick={() => setInternalShowOrbits(!showOrbits)}
+              className={`px-2.5 py-1.5 rounded-lg border text-xs font-mono flex items-center gap-1.5 transition-colors cursor-pointer ${
+                showOrbits
+                  ? 'bg-cyan-950/70 border-cyan-500/50 text-cyan-300'
+                  : 'bg-[#070b14]/85 border-slate-750 text-slate-400'
+              }`}
+              title="Toggle planetary orbit lines"
+            >
+              <Layers className="w-3 h-3" />
+              <span className="hidden sm:inline">Orbits</span>
+            </button>
 
-        {/* Star Labels Toggle */}
-        <button
-          onClick={() => setShowLabels(!showLabels)}
-          className={`px-2.5 py-1.5 rounded-lg border text-xs font-mono flex items-center gap-1.5 transition-colors cursor-pointer ${
-            showLabels
-              ? 'bg-violet-950/70 border-violet-500/50 text-violet-300'
-              : 'bg-[#070b14]/85 border-slate-750 text-slate-400'
-          }`}
-          title="Toggle star billboard labels"
-        >
-          <Eye className="w-3 h-3" />
-          <span className="hidden sm:inline">Labels</span>
-        </button>
+            {/* Star Labels Toggle */}
+            <button
+              onClick={() => setInternalShowLabels(!showLabels)}
+              className={`px-2.5 py-1.5 rounded-lg border text-xs font-mono flex items-center gap-1.5 transition-colors cursor-pointer ${
+                showLabels
+                  ? 'bg-violet-950/70 border-violet-500/50 text-violet-300'
+                  : 'bg-[#070b14]/85 border-slate-750 text-slate-400'
+              }`}
+              title="Toggle star billboard labels"
+            >
+              <Eye className="w-3 h-3" />
+              <span className="hidden sm:inline">Labels</span>
+            </button>
 
-        {/* Real-Time Motion Toggle */}
-        <button
-          onClick={() => setEnableMotion(!enableMotion)}
-          className={`px-2.5 py-1.5 rounded-lg border text-xs font-mono flex items-center gap-1.5 transition-colors cursor-pointer ${
-            enableMotion
-              ? 'bg-emerald-950/70 border-emerald-500/50 text-emerald-300'
-              : 'bg-[#070b14]/85 border-slate-750 text-slate-400'
-          }`}
-          title="Toggle orbital simulation motion"
-        >
-          {enableMotion ? <Pause className="w-3 h-3 text-emerald-400" /> : <Play className="w-3 h-3 text-slate-400" />}
-          <span className="hidden sm:inline">{enableMotion ? 'Motion' : 'Paused'}</span>
-        </button>
-      </div>
+            {/* Real-Time Motion Toggle */}
+            <button
+              onClick={() => setInternalEnableMotion(!enableMotion)}
+              className={`px-2.5 py-1.5 rounded-lg border text-xs font-mono flex items-center gap-1.5 transition-colors cursor-pointer ${
+                enableMotion
+                  ? 'bg-emerald-950/70 border-emerald-500/50 text-emerald-300'
+                  : 'bg-[#070b14]/85 border-slate-750 text-slate-400'
+              }`}
+              title="Toggle orbital simulation motion"
+            >
+              {enableMotion ? <Pause className="w-3 h-3 text-emerald-400" /> : <Play className="w-3 h-3 text-slate-400" />}
+              <span className="hidden sm:inline">{enableMotion ? 'Motion' : 'Paused'}</span>
+            </button>
+          </div>
 
-      {/* Target Quick Switcher Bar at Bottom */}
-      <div className="absolute bottom-4 left-4 right-4 z-20 flex flex-wrap items-center justify-between gap-2 pointer-events-none">
-        <div className="flex flex-wrap items-center gap-1.5 pointer-events-auto">
-          <span className="text-[10px] font-mono text-slate-400 uppercase tracking-wider mr-1 hidden sm:inline">
-            Focus System:
-          </span>
-          {celestialObjects.map((obj) => {
-            const isSelected =
-              activeTarget?.type === 'star'
-                ? activeTarget.star.id === obj.id
-                : activeTarget?.parentStar.id === obj.id
+          {/* Target Quick Switcher Bar at Bottom */}
+          <div className="absolute bottom-4 left-4 right-4 z-20 flex flex-wrap items-center justify-between gap-2 pointer-events-none">
+            <div className="flex flex-wrap items-center gap-1.5 pointer-events-auto">
+              <span className="text-[10px] font-mono text-slate-400 uppercase tracking-wider mr-1 hidden sm:inline">
+                Focus System:
+              </span>
+              {celestialObjects.map((obj) => {
+                const isSelected =
+                  activeTarget?.type === 'star'
+                    ? activeTarget.star.id === obj.id
+                    : activeTarget?.parentStar.id === obj.id
 
-            return (
-              <button
-                key={obj.id}
-                onClick={() => handleSelectStar(obj)}
-                className={`px-2.5 py-1 rounded-md text-xs font-mono border transition-all cursor-pointer ${
-                  isSelected
-                    ? 'bg-cyan-500 text-slate-950 font-bold border-cyan-400 shadow-[0_0_12px_rgba(6,182,212,0.4)]'
-                    : 'bg-[#070b14]/85 text-slate-300 border-slate-750 hover:border-cyan-500/50 hover:text-white'
-                }`}
-              >
-                {obj.name}
-              </button>
-            )
-          })}
-        </div>
+                return (
+                  <button
+                    key={obj.id}
+                    onClick={() => handleSelectStar(obj)}
+                    className={`px-2.5 py-1 rounded-md text-xs font-mono border transition-all cursor-pointer ${
+                      isSelected
+                        ? 'bg-cyan-500 text-slate-950 font-bold border-cyan-400 shadow-[0_0_12px_rgba(6,182,212,0.4)]'
+                        : 'bg-[#070b14]/85 text-slate-300 border-slate-750 hover:border-cyan-500/50 hover:text-white'
+                    }`}
+                  >
+                    {obj.name}
+                  </button>
+                )
+              })}
+            </div>
 
-        <div className="text-[10px] font-mono text-slate-400 bg-[#070b14]/80 px-2 py-1 rounded border border-slate-800 hidden md:block">
-          Click Star/Planet: Inspect · Drag: Rotate · Scroll: Zoom
-        </div>
-      </div>
+            <div className="text-[10px] font-mono text-slate-400 bg-[#070b14]/80 px-2 py-1 rounded border border-slate-800 hidden md:block">
+              Click Star/Planet: Inspect · Drag: Rotate · Scroll: Zoom
+            </div>
+          </div>
 
-      {/* Interactive Celestial Details Panel */}
-      <CelestialDetailsPanel
-        target={activeTarget}
-        onClose={() => {
-          setUserSelectedTarget(null)
-          setUserSelectedPlanetId(undefined)
-        }}
-        onSelectStar={handleSelectStar}
-        onSelectPlanet={handleSelectPlanet}
-        onAnalyzeLightCurve={onAnalyzeLightCurve}
-        onResetView={handleResetCamera}
-      />
+          {/* Interactive Celestial Details Panel */}
+          <CelestialDetailsPanel
+            target={activeTarget}
+            onClose={() => {
+              setUserSelectedTarget(null)
+              setUserSelectedPlanetId(undefined)
+            }}
+            onSelectStar={handleSelectStar}
+            onSelectPlanet={handleSelectPlanet}
+            onAnalyzeLightCurve={onAnalyzeLightCurve}
+            onResetView={handleResetCamera}
+          />
+        </>
+      )}
     </div>
   )
 }

@@ -156,6 +156,8 @@ export interface UniverseSceneProps {
   showLabels?: boolean
   /** Whether real-time orbital and corona motion is enabled */
   enableMotion?: boolean
+  /** Whether to hide built-in fallback toolbar & bottom buttons when controlled by an external HUD */
+  hideDefaultControls?: boolean
   /** Quality mode: 'low' disables post-processing for student laptops; 'high' enables full bloom */
   quality?: 'low' | 'medium' | 'high'
   /** Optional custom CSS class for outer container */
