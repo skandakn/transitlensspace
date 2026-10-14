@@ -142,13 +142,30 @@ export function LightCurvePlot({
   const hasDetectedTransits = detectedIntervals.length > 0 && isTransitCandidate
 
   return (
-    <div className="relative w-full h-full flex flex-col">
+    <div
+      className="relative w-full h-full flex flex-col"
+      role="region"
+      aria-label="Interactive light curve plot displaying relative flux versus observation time"
+    >
+      {/* Screen-reader accessible summary of the chart data */}
+      <div className="sr-only">
+        <p>
+          Photometric time series chart with {data.length.toLocaleString()} cadences.
+          Baseline flux is normalized around 1.0. Flux ranges between {yDomain[0]} and {yDomain[1]}.
+          {hasDetectedTransits
+            ? `${detectedIntervals.length} transit window(s) identified and marked.`
+            : 'No transit intervals currently identified.'}
+        </p>
+      </div>
+
       {/* Interactive overlay controls in chart corner */}
       {hasDetectedTransits && (
         <div className="absolute top-2 right-4 z-20 flex items-center gap-2">
           <button
             type="button"
             onClick={() => setShowIntervals((prev) => !prev)}
+            aria-pressed={showIntervals}
+            aria-label={`Toggle detected transit interval highlighting (${detectedIntervals.length} windows detected)`}
             className={`px-2 py-0.5 rounded text-[10px] font-mono flex items-center gap-1 transition-colors cursor-pointer border ${
               showIntervals
                 ? 'bg-emerald-950/70 border-emerald-500/50 text-emerald-300'
@@ -156,7 +173,7 @@ export function LightCurvePlot({
             }`}
             title="Toggle detected transit interval highlighting"
           >
-            {showIntervals ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
+            {showIntervals ? <Eye className="w-3 h-3" aria-hidden="true" /> : <EyeOff className="w-3 h-3" aria-hidden="true" />}
             <span>Transit Intervals ({detectedIntervals.length})</span>
           </button>
 
@@ -164,6 +181,8 @@ export function LightCurvePlot({
             <button
               type="button"
               onClick={() => setShowModelFit((prev) => !prev)}
+              aria-pressed={showModelFit}
+              aria-label="Toggle transit model fit curve"
               className={`px-2 py-0.5 rounded text-[10px] font-mono flex items-center gap-1 transition-colors cursor-pointer border ${
                 showModelFit
                   ? 'bg-violet-950/70 border-violet-500/50 text-violet-300'

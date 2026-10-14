@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { Activity, ChevronDown, ChevronRight, Search, Sparkles } from 'lucide-react'
+import { Activity, ChevronDown, ChevronRight, Search, Sparkles, RotateCcw } from 'lucide-react'
 import { RootLayout } from './layouts/RootLayout'
 import { UploadView } from './features/upload/UploadView'
 import { ResultsView } from './features/results/ResultsView'
@@ -125,6 +125,67 @@ function DiscoveryWorkspace({
         </div>
       </header>
 
+      {/* Judge Demonstration Workflow Guide */}
+      <div
+        className="mb-5 p-4 rounded-xl bg-gradient-to-r from-cyan-950/40 via-slate-900/90 to-violet-950/40 border border-cyan-500/30 shadow-[0_0_20px_rgba(6,182,212,0.1)]"
+        role="region"
+        aria-label="Judge demonstration flow guide"
+      >
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-800/80">
+          <div className="flex items-center gap-2">
+            <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase tracking-wider bg-cyan-500/20 text-cyan-300 border border-cyan-500/40">
+              ⚖️ Judge Evaluation Guide
+            </span>
+            <span className="text-xs font-semibold text-white">4-Step Exoplanet Discovery Demonstration</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => onSelectObservation('TOI-700')}
+              className="px-2.5 py-1 rounded text-[10px] font-mono bg-emerald-950/70 hover:bg-emerald-900/70 border border-emerald-500/40 text-emerald-300 transition-colors cursor-pointer"
+              title="Loads known periodic transit candidate TOI-700"
+            >
+              🌟 1. Test Known Transit
+            </button>
+            <button
+              type="button"
+              onClick={() => onSelectObservation('HD-219134')}
+              className="px-2.5 py-1 rounded text-[10px] font-mono bg-slate-900/80 hover:bg-slate-850 border border-slate-750 text-slate-300 transition-colors cursor-pointer"
+              title="Loads flat photometric control star HD-219134"
+            >
+              ➖ 2. Test Flat Control
+            </button>
+            <button
+              type="button"
+              onClick={() => workflow.resetAnalysis()}
+              className="px-2.5 py-1 rounded text-[10px] font-mono bg-slate-900/80 hover:bg-slate-850 border border-slate-750 text-slate-300 transition-colors cursor-pointer"
+              title="Reset analysis results"
+            >
+              🔄 Reset Results
+            </button>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 pt-3 text-[11px] font-mono">
+          <div className="flex items-start gap-2">
+            <span className="w-5 h-5 rounded-full bg-cyan-950 border border-cyan-500/40 text-cyan-300 flex items-center justify-center text-[10px] font-bold shrink-0">1</span>
+            <span className="text-slate-300"><strong className="text-white">Select Observation:</strong> Choose TOI-700 (transit) or HD-219134 (flat control).</span>
+          </div>
+          <div className="flex items-start gap-2">
+            <span className="w-5 h-5 rounded-full bg-cyan-950 border border-cyan-500/40 text-cyan-300 flex items-center justify-center text-[10px] font-bold shrink-0">2</span>
+            <span className="text-slate-300"><strong className="text-white">Analyze Star:</strong> Click "Analyze Star" to run browser-side BLS detection.</span>
+          </div>
+          <div className="flex items-start gap-2">
+            <span className="w-5 h-5 rounded-full bg-cyan-950 border border-cyan-500/40 text-cyan-300 flex items-center justify-center text-[10px] font-bold shrink-0">3</span>
+            <span className="text-slate-300"><strong className="text-white">Inspect Graph:</strong> View normalized flux, identified transit windows, and model fit.</span>
+          </div>
+          <div className="flex items-start gap-2">
+            <span className="w-5 h-5 rounded-full bg-cyan-950 border border-cyan-500/40 text-cyan-300 flex items-center justify-center text-[10px] font-bold shrink-0">4</span>
+            <span className="text-slate-300"><strong className="text-white">Interpret Result:</strong> Review SNR, orbital period, transit depth, and evidence.</span>
+          </div>
+        </div>
+      </div>
+
       {/* Target Star Selection (01) */}
       <section className="target-panel panel" id="target-selection" aria-labelledby="target-heading">
         <div className="target-panel-heading">
@@ -234,6 +295,7 @@ function DiscoveryWorkspace({
                 value={targetId}
                 onChange={(event) => {
                   setTargetId(event.target.value)
+                  onSelectObservation('')
                   workflow.resetAnalysis()
                 }}
                 placeholder="Enter a catalog ID or target name (e.g. TOI-700, Kepler-90)"
@@ -260,32 +322,45 @@ function DiscoveryWorkspace({
             </span>
           </label>
 
-          {/* Analyze Star button - enabled only when valid data is available (Requirement 2 & 3) */}
-          <button
-            className="analyze-button"
-            type="button"
-            onClick={() => workflow.runAnalysis()}
-            disabled={!workflow.canAnalyze || workflow.isAnalyzing}
-            aria-busy={workflow.isAnalyzing}
-            aria-disabled={!workflow.canAnalyze || workflow.isAnalyzing}
-            title={
-              !workflow.canAnalyze
-                ? workflow.validationReason || 'Valid observation and light curve data required'
-                : 'Run client-side BLS algorithmic transit detection'
-            }
-          >
-            {workflow.isAnalyzing ? (
-              <>
-                <Activity size={17} className="animate-spin" aria-hidden="true" />
-                <span>Analyzing...</span>
-              </>
-            ) : (
-              <>
-                <span>Analyze Star</span>
-                <ChevronRight size={17} strokeWidth={2} aria-hidden="true" />
-              </>
-            )}
-          </button>
+          {/* Action buttons: Analyze and Quick Reset */}
+          <div className="flex items-center gap-2">
+            <button
+              className="analyze-button flex-1"
+              type="button"
+              onClick={() => workflow.runAnalysis()}
+              disabled={!workflow.canAnalyze || workflow.isAnalyzing}
+              aria-busy={workflow.isAnalyzing}
+              aria-disabled={!workflow.canAnalyze || workflow.isAnalyzing}
+              title={
+                !workflow.canAnalyze
+                  ? workflow.validationReason || 'Valid observation and light curve data required'
+                  : 'Run client-side BLS algorithmic transit detection'
+              }
+            >
+              {workflow.isAnalyzing ? (
+                <>
+                  <Activity size={17} className="animate-spin" aria-hidden="true" />
+                  <span>Analyzing...</span>
+                </>
+              ) : (
+                <>
+                  <span>Analyze Star</span>
+                  <ChevronRight size={17} strokeWidth={2} aria-hidden="true" />
+                </>
+              )}
+            </button>
+
+            <button
+              className="reset-button px-3.5 py-2.5 rounded-lg bg-slate-900 hover:bg-slate-850 border border-slate-750 hover:border-slate-600 text-slate-300 hover:text-white text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+              type="button"
+              onClick={() => workflow.resetAnalysis()}
+              title="Reset current analysis results"
+              aria-label="Reset current analysis"
+            >
+              <RotateCcw size={15} aria-hidden="true" />
+              <span>Reset</span>
+            </button>
+          </div>
         </div>
 
         {/* Quick Sample Observation Presets */}
@@ -300,6 +375,7 @@ function DiscoveryWorkspace({
                 key={obs.id}
                 type="button"
                 onClick={() => onSelectObservation(obs.id)}
+                aria-label={`Select observation preset ${obs.name || obs.id}`}
                 className={`px-2.5 py-1 rounded text-[11px] font-mono transition-colors cursor-pointer border ${
                   isSelected
                     ? 'bg-cyan-500/20 border-cyan-400 text-cyan-200 shadow-[0_0_10px_rgba(6,182,212,0.2)]'
@@ -565,7 +641,12 @@ export function App() {
         />
       )}
 
-      {activeTab === 'results' && <ResultsView results={results} />}
+      {activeTab === 'results' && (
+        <ResultsView
+          results={results}
+          onNavigateToAnalysis={() => setActiveTab('analysis')}
+        />
+      )}
     </RootLayout>
   )
 }

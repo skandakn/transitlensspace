@@ -1,114 +1,94 @@
 import { useState, useRef } from 'react'
-import { UploadCloud, FileText, CheckCircle2, AlertCircle, HelpCircle } from 'lucide-react'
+import {
+  UploadCloud,
+  FileText,
+  CheckCircle2,
+  AlertCircle,
+  HelpCircle,
+  Download,
+  AlertTriangle,
+  ArrowRight,
+  Database,
+  RefreshCw
+} from 'lucide-react'
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/Card'
 import { Button } from '../../components/ui/Button'
+import { Badge } from '../../components/ui/Badge'
 import type { LightCurvePoint } from '../../types'
-import { generateSyntheticLightCurve } from '../../data/mockData'
+import {
+  parseAndValidateLightCurve,
+  generateSampleCsvContent,
+  type CsvParseResult
+} from './csvParser'
 
 export interface UploadViewProps {
   onLightCurveLoaded?: (points: LightCurvePoint[], filename: string) => void
 }
 
-function parseLightCurveText(text: string): LightCurvePoint[] {
-  const trimmed = text.trim()
-  if (trimmed.startsWith('[') || trimmed.startsWith('{')) {
-    try {
-      const parsed = JSON.parse(trimmed)
-      const arr = Array.isArray(parsed) ? parsed : parsed.data || parsed.points || []
-      const points: LightCurvePoint[] = []
-      for (const item of arr) {
-        const time = Number(item.time ?? item.Time ?? item.TIME ?? item.bjd ?? item.BJD ?? item.t)
-        const flux = Number(item.flux ?? item.Flux ?? item.FLUX ?? item.pdcsap_flux ?? item.f)
-        if (!isNaN(time) && !isNaN(flux)) {
-          points.push({ time, flux })
-        }
-      }
-      if (points.length) return points
-    } catch {
-      // fallback to line parsing
-    }
-  }
-
-  const lines = trimmed.split(/\r?\n/)
-  const points: LightCurvePoint[] = []
-  let timeCol = 0
-  let fluxCol = 1
-  let startIdx = 0
-
-  if (lines.length > 0) {
-    const firstLine = lines[0].toLowerCase()
-    const headerCols = firstLine.split(/,|\t|\s+/)
-    const timeIdx = headerCols.findIndex((c) => c.includes('time') || c.includes('bjd') || c === 't')
-    const fluxIdx = headerCols.findIndex((c) => c.includes('flux') || c.includes('mag') || c === 'f')
-    if (timeIdx !== -1 && fluxIdx !== -1) {
-      timeCol = timeIdx
-      fluxCol = fluxIdx
-      startIdx = 1
-    } else if (isNaN(Number(headerCols[0]))) {
-      startIdx = 1
-    }
-  }
-
-  for (let i = startIdx; i < lines.length; i++) {
-    const line = lines[i].trim()
-    if (!line || line.startsWith('#')) continue
-    const parts = line.split(/,|\t|\s+/)
-    if (parts.length >= 2) {
-      const time = parseFloat(parts[timeCol])
-      const flux = parseFloat(parts[fluxCol])
-      if (!isNaN(time) && !isNaN(flux)) {
-        points.push({ time, flux })
-      }
-    }
-  }
-
-  return points
-}
-
 export function UploadView({ onLightCurveLoaded }: UploadViewProps) {
   const [dragActive, setDragActive] = useState(false)
   const [selectedFileName, setSelectedFileName] = useState<string | null>(null)
-  const [parseError, setParseError] = useState<string | null>(null)
-  const [pointCount, setPointCount] = useState<number>(0)
+  const [parseResult, setParseResult] = useState<CsvParseResult | null>(null)
+  const [isLoading, setIsLoading] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const handleProcessFile = async (file: File) => {
+  const processContent = (text: string, filename: string) => {
+    setIsLoading(true)
+    setSelectedFileName(filename)
     try {
-      setParseError(null)
-      setSelectedFileName(file.name)
-      const text = await file.text()
-      const parsedPoints = parseLightCurveText(text)
+      const result = parseAndValidateLightCurve(text, filename)
+      setParseResult(result)
 
-      if (parsedPoints.length < 5) {
-        setParseError(`File "${file.name}" contained insufficient valid (time, flux) rows (${parsedPoints.length} points parsed). Check formatting.`)
-        return
+      if (result.success && result.points.length > 0) {
+        onLightCurveLoaded?.(result.points, filename)
       }
-
-      setPointCount(parsedPoints.length)
-      onLightCurveLoaded?.(parsedPoints, file.name)
     } catch (err) {
-      setParseError(`Failed to read file: ${err instanceof Error ? err.message : String(err)}`)
+      setParseResult({
+        success: false,
+        points: [],
+        error: `Unexpected error reading file: ${err instanceof Error ? err.message : String(err)}`,
+        warnings: []
+      })
+    } finally {
+      setIsLoading(false)
     }
   }
 
-  const handleSimulateDemoUpload = () => {
-    const filename = 'TOI-700_sector11_lc_clean.csv'
-    setSelectedFileName(filename)
-    setParseError(null)
-    const samplePoints = generateSyntheticLightCurve(3.742, 0.85, 0.0092, 3.25, 25, 30)
-    setPointCount(samplePoints.length)
-    onLightCurveLoaded?.(samplePoints, filename)
+  const handleProcessFile = async (file: File) => {
+    const text = await file.text()
+    processContent(text, file.name)
   }
+
+  // Predefined demo sample data loaders for judges
+  const handleLoadSample = (type: 'transit' | 'flat' | 'sparse' | 'malformed') => {
+    const sample = generateSampleCsvContent(type)
+    processContent(sample.content, sample.filename)
+  }
+
+  const handleDownloadSample = () => {
+    const sample = generateSampleCsvContent('transit')
+    const blob = new Blob([sample.content], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.setAttribute('download', sample.filename)
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+  }
+
+  const stats = parseResult?.stats
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
       <div>
         <h1 className="text-xl sm:text-2xl font-bold text-white tracking-wide flex items-center gap-2">
           <UploadCloud className="w-5 h-5 text-cyan-400" />
-          Photometry Ingestion Hub
+          Photometry Ingestion & Validation Hub
         </h1>
         <p className="text-xs text-slate-400 mt-1">
-          Import photometric time series from Kepler, TESS, or ground-based survey observatories
+          Import photometric time series from Kepler, TESS, or ground-based survey observatories with instant data validation
         </p>
       </div>
 
@@ -132,7 +112,7 @@ export function UploadView({ onLightCurveLoaded }: UploadViewProps) {
           }
         }}
       >
-        <CardContent className="flex flex-col items-center justify-center p-8 sm:p-12 text-center space-y-4">
+        <CardContent className="flex flex-col items-center justify-center p-6 sm:p-10 text-center space-y-4">
           <input
             type="file"
             ref={fileInputRef}
@@ -141,13 +121,13 @@ export function UploadView({ onLightCurveLoaded }: UploadViewProps) {
                 handleProcessFile(e.target.files[0])
               }
             }}
-            accept=".csv,.tsv,.txt,.json"
+            accept=".csv,.tsv,.txt,.json,.dat"
             className="hidden"
             aria-label="Upload photometric time series file"
           />
 
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-cyan-500/20 to-violet-600/20 border border-cyan-500/30 flex items-center justify-center text-cyan-400 shadow-[0_0_20px_rgba(6,182,212,0.2)]">
-            <UploadCloud className="w-8 h-8" />
+          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-cyan-500/20 to-violet-600/20 border border-cyan-500/30 flex items-center justify-center text-cyan-400 shadow-[0_0_20px_rgba(6,182,212,0.2)]">
+            <UploadCloud className="w-7 h-7" />
           </div>
 
           <div className="space-y-1">
@@ -155,7 +135,7 @@ export function UploadView({ onLightCurveLoaded }: UploadViewProps) {
               Drag & Drop your Light Curve File
             </h3>
             <p className="text-xs text-slate-400 max-w-md">
-              Supports CSV, TSV, JSON, and ASCII files containing <code className="text-cyan-300">time</code> and <code className="text-cyan-300">flux</code> columns.
+              Supports CSV, TSV, JSON, and ASCII whitespace files containing <code className="text-cyan-300">time</code> and <code className="text-cyan-300">flux</code> columns.
             </p>
           </div>
 
@@ -164,25 +144,156 @@ export function UploadView({ onLightCurveLoaded }: UploadViewProps) {
               variant="primary"
               size="md"
               onClick={() => fileInputRef.current?.click()}
+              aria-label="Select local file from computer"
             >
               Select Local File
             </Button>
-            <Button variant="outline" size="md" onClick={handleSimulateDemoUpload}>
-              Load Sample TESS Light Curve
+            <Button
+              variant="outline"
+              size="md"
+              onClick={handleDownloadSample}
+              leftIcon={<Download className="w-3.5 h-3.5" />}
+              aria-label="Download sample CSV template for testing"
+            >
+              Download Sample CSV
             </Button>
           </div>
 
-          {parseError && (
-            <div className="mt-4 p-3 rounded-lg bg-red-950/40 border border-red-500/40 text-red-300 text-xs flex items-center gap-2 text-left">
-              <AlertCircle className="w-4 h-4 text-red-400 shrink-0" />
-              <span>{parseError}</span>
+          {/* Quick Demo Previews for Judges */}
+          <div className="w-full pt-4 border-t border-slate-800/80">
+            <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-2">
+              Judges One-Click Test Cases:
+            </div>
+            <div className="flex flex-wrap items-center justify-center gap-2">
+              <button
+                type="button"
+                onClick={() => handleLoadSample('transit')}
+                className="px-2.5 py-1 rounded text-[11px] font-mono bg-cyan-950/60 hover:bg-cyan-900/60 border border-cyan-500/40 text-cyan-200 transition-colors cursor-pointer"
+                title="Loads a calibrated transit light curve with periodic dips (TOI-700)"
+              >
+                🌟 Known Transit Sample (TOI-700)
+              </button>
+              <button
+                type="button"
+                onClick={() => handleLoadSample('flat')}
+                className="px-2.5 py-1 rounded text-[11px] font-mono bg-slate-900/80 hover:bg-slate-850 border border-slate-750 text-slate-300 transition-colors cursor-pointer"
+                title="Loads flat quiet star data without transits (HD-219134)"
+              >
+                ➖ Flat Control Sample (HD-219134)
+              </button>
+              <button
+                type="button"
+                onClick={() => handleLoadSample('sparse')}
+                className="px-2.5 py-1 rounded text-[11px] font-mono bg-amber-950/50 hover:bg-amber-900/50 border border-amber-500/40 text-amber-300 transition-colors cursor-pointer"
+                title="Tests rejection boundary for files with < 15 points"
+              >
+                ⚠️ Test Sparse File (&lt;15 pts)
+              </button>
+              <button
+                type="button"
+                onClick={() => handleLoadSample('malformed')}
+                className="px-2.5 py-1 rounded text-[11px] font-mono bg-rose-950/50 hover:bg-rose-900/50 border border-rose-500/40 text-rose-300 transition-colors cursor-pointer"
+                title="Tests error handling for files missing numeric columns"
+              >
+                🚫 Test Malformed CSV
+              </button>
+            </div>
+          </div>
+
+          {/* Error Message */}
+          {parseResult && !parseResult.success && parseResult.error && (
+            <div
+              className="w-full mt-4 p-3.5 rounded-lg bg-rose-950/40 border border-rose-500/40 text-rose-300 text-xs flex items-start gap-2.5 text-left animate-in fade-in duration-200"
+              role="alert"
+            >
+              <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
+              <div className="space-y-1">
+                <span className="font-semibold block text-white">Validation Error</span>
+                <span className="leading-relaxed">{parseResult.error}</span>
+              </div>
             </div>
           )}
 
-          {selectedFileName && !parseError && (
-            <div className="mt-4 p-3 rounded-lg bg-emerald-950/40 border border-emerald-500/40 text-emerald-300 text-xs flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-              <span>Loaded: <strong>{selectedFileName}</strong> ({pointCount.toLocaleString()} observations parsed and ready for analysis)</span>
+          {/* Success Message & Parsed Telemetry */}
+          {parseResult && parseResult.success && selectedFileName && (
+            <div className="w-full mt-4 space-y-3 animate-in fade-in duration-200">
+              <div className="p-3.5 rounded-lg bg-emerald-950/40 border border-emerald-500/40 text-emerald-300 text-xs flex items-start justify-between gap-3 text-left">
+                <div className="flex items-start gap-2.5">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                  <div>
+                    <span className="font-semibold text-white block">
+                      Successfully Parsed &amp; Loaded: {selectedFileName}
+                    </span>
+                    <span className="text-[11px] text-emerald-300/90 font-mono">
+                      Format: {parseResult.detectedDelimiter} · {parseResult.points.length.toLocaleString()} valid cadences ready for BLS detection
+                    </span>
+                  </div>
+                </div>
+
+                <Badge variant="success" className="text-[10px] shrink-0 font-mono">
+                  Validated ✓
+                </Badge>
+              </div>
+
+              {/* Parsed Telemetry Grid */}
+              {stats && (
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-left font-mono">
+                  <div className="p-2.5 rounded-lg bg-slate-900/90 border border-slate-800">
+                    <span className="text-[10px] text-slate-400 block uppercase">Valid Cadences</span>
+                    <span className="text-sm font-bold text-white mt-0.5 block">
+                      {stats.validRows.toLocaleString()}
+                    </span>
+                    <span className="text-[9px] text-slate-500">
+                      {stats.skippedRows > 0 ? `${stats.skippedRows} skipped` : '0 errors'}
+                    </span>
+                  </div>
+
+                  <div className="p-2.5 rounded-lg bg-slate-900/90 border border-slate-800">
+                    <span className="text-[10px] text-slate-400 block uppercase">Time Span</span>
+                    <span className="text-sm font-bold text-cyan-300 mt-0.5 block truncate">
+                      {stats.durationDays} d
+                    </span>
+                    <span className="text-[9px] text-slate-500">
+                      [{stats.minTime} .. {stats.maxTime}]
+                    </span>
+                  </div>
+
+                  <div className="p-2.5 rounded-lg bg-slate-900/90 border border-slate-800">
+                    <span className="text-[10px] text-slate-400 block uppercase">Mean Flux</span>
+                    <span className="text-sm font-bold text-amber-300 mt-0.5 block truncate">
+                      {stats.meanFlux.toFixed(5)}
+                    </span>
+                    <span className="text-[9px] text-slate-500">
+                      [{stats.minFlux.toFixed(4)} .. {stats.maxFlux.toFixed(4)}]
+                    </span>
+                  </div>
+
+                  <div className="p-2.5 rounded-lg bg-slate-900/90 border border-slate-800">
+                    <span className="text-[10px] text-slate-400 block uppercase">Format</span>
+                    <span className="text-sm font-bold text-violet-300 mt-0.5 block truncate">
+                      {parseResult.detectedDelimiter}
+                    </span>
+                    <span className="text-[9px] text-slate-500">
+                      Auto-detected
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {/* Warnings List */}
+              {parseResult.warnings.length > 0 && (
+                <div className="p-3 rounded-lg bg-amber-950/30 border border-amber-500/30 text-amber-300 text-left text-xs space-y-1">
+                  <div className="flex items-center gap-1.5 font-semibold text-amber-200">
+                    <AlertTriangle className="w-3.5 h-3.5 text-amber-400" />
+                    <span>Parser Warnings ({parseResult.warnings.length})</span>
+                  </div>
+                  <ul className="list-disc pl-4 space-y-0.5 text-[11px] text-amber-300/80">
+                    {parseResult.warnings.map((w, idx) => (
+                      <li key={idx}>{w}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
           )}
         </CardContent>
@@ -205,7 +316,7 @@ export function UploadView({ onLightCurveLoaded }: UploadViewProps) {
               0.0417, 1.000045, 0.00070
             </div>
             <p className="text-[11px] text-slate-400 font-sans">
-              Flux values should be normalized around 1.0. Time in Barycentric Julian Date (BJD) or relative days.
+              Flux values should be normalized around 1.0. Time in Barycentric Julian Date (BJD) or relative days. Column names are case-insensitive.
             </p>
           </CardContent>
         </Card>
@@ -214,17 +325,19 @@ export function UploadView({ onLightCurveLoaded }: UploadViewProps) {
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center gap-2">
               <HelpCircle className="w-4 h-4 text-violet-400" />
-              Handoff Contract for Upload Lead
+              Ingestion Validation &amp; Error Rules
             </CardTitle>
           </CardHeader>
           <CardContent className="text-xs text-slate-300 space-y-2">
-            <p>
-              Use <code className="text-violet-300">LightCurvePoint[]</code> as the return type for parsed files.
+            <p className="text-[11px] text-slate-400">
+              The ingestion engine automatically applies the following astrophysical validation checks:
             </p>
             <ul className="list-disc pl-4 space-y-1 text-slate-400 text-[11px]">
-              <li>Filter out NaNs and inf values</li>
-              <li>Pass resulting points to <code className="text-cyan-300">onLightCurveLoaded</code></li>
-              <li>Add FITS parsing worker via <code className="text-slate-300">fitsjs</code> if needed</li>
+              <li><strong className="text-slate-200">Header flexibility:</strong> Accepts time, bjd, t and flux, pdcsap_flux, f, mag.</li>
+              <li><strong className="text-slate-200">Delimiter auto-detection:</strong> Supports comma, tab, semicolon, or whitespace.</li>
+              <li><strong className="text-slate-200">Rejection of non-finite rows:</strong> Drops NaNs, infinities, and non-positive flux values.</li>
+              <li><strong className="text-slate-200">Chronological enforcement:</strong> Automatically sorts out-of-order cadences.</li>
+              <li><strong className="text-slate-200">Minimum threshold:</strong> At least 15 valid points required to execute transit detection.</li>
             </ul>
           </CardContent>
         </Card>
