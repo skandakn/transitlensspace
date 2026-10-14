@@ -174,7 +174,7 @@ export interface AnalysisResult {
 // 6. Navigation & UI Types
 // ---------------------------------------------------------------------------
 
-export type NavigationTab = 'analysis' | 'universe' | 'stars' | 'upload' | 'results' | 'docs';
+export type NavigationTab = 'analysis' | 'universe' | 'stars' | 'upload' | 'results';
 
 export interface NavItem {
   id: NavigationTab;

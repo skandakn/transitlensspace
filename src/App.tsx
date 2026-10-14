@@ -4,7 +4,6 @@ import { RootLayout } from './layouts/RootLayout'
 import { UploadView } from './features/upload/UploadView'
 import { ResultsView } from './features/results/ResultsView'
 import { StarCatalogView } from './features/stars/StarCatalogView'
-import { DocsPage } from './pages/DocsPage'
 import { AnalysisResultsPanel } from './features/analysis/AnalysisResultsPanel'
 import { LightCurvePlot } from './features/analysis/LightCurvePlot'
 import { useAnalysisWorkflow } from './features/analysis/useAnalysisWorkflow'
@@ -615,8 +614,6 @@ export function App() {
       )}
 
       {activeTab === 'results' && <ResultsView results={results} />}
-
-      {activeTab === 'docs' && <DocsPage />}
     </RootLayout>
   )
 }

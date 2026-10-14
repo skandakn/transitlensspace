@@ -5,7 +5,6 @@ import {
   Compass,
   UploadCloud,
   FileSpreadsheet,
-  BookOpen,
   Radio,
   Cpu,
   ChevronRight
@@ -60,12 +59,6 @@ export function Sidebar({
       subtitle: 'Disposition & vetting table',
       icon: FileSpreadsheet,
       badge: '2 Found'
-    },
-    {
-      id: 'docs' as NavigationTab,
-      label: 'Module Architecture',
-      subtitle: 'Shared contracts & handbook',
-      icon: BookOpen
     }
   ]
 
