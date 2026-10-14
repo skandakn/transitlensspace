@@ -22,7 +22,7 @@
  * the HUD and UniverseScene so they stay in sync without prop-drilling a
  * shared ref.
  */
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useRef } from 'react'
 import { UniverseScene, starObservationsToCelestialObjects } from '../universe'
 import { ExplorerHUD } from './ExplorerHUD'
 import { useHandTracking, HandTrackingOverlay, HandTrackingDemo } from '../hand-tracking'
@@ -162,17 +162,36 @@ export function ExplorerView({
     setInfoPanelOpen(true)
   }
 
-  const handleSelectObject = (obj: { id: string; starObservation?: StarObservation }) => {
+  const lastSwipeTimeRef = useRef(0)
+  const swipeDeltaAccumRef = useRef(0)
+
+  const handleSelectObject = (obj: { id: string; name?: string; starObservation?: StarObservation }) => {
     if (obj.starObservation) {
       handleSelectStar(obj.starObservation)
-    } else {
-      const star = stars.find((s) => s.id === obj.id)
-      if (star) handleSelectStar(star)
+      return
+    }
+    const star = stars.find(
+      (s) =>
+        s.id === obj.id ||
+        (obj.name && (s.name.toLowerCase().includes(obj.name.toLowerCase()) || obj.name.toLowerCase().includes(s.name.toLowerCase()))) ||
+        (s.catalogId && s.catalogId === obj.id)
+    )
+    if (star) {
+      handleSelectStar(star)
     }
   }
 
   const handleSelectPlanet = (_planet: CelestialPlanet, parentStar: CelestialObject) => {
-    const star = stars.find((s) => s.id === parentStar.id)
+    if (parentStar.starObservation) {
+      handleSelectStar(parentStar.starObservation)
+      return
+    }
+    const star = stars.find(
+      (s) =>
+        s.id === parentStar.id ||
+        s.name.toLowerCase().includes(parentStar.name.toLowerCase()) ||
+        parentStar.name.toLowerCase().includes(s.name.toLowerCase())
+    )
     if (star) {
       handleSelectStar(star)
     }
@@ -191,8 +210,17 @@ export function ExplorerView({
     }
   }
 
-  // Handle pinch gesture: lock onto / inspect celestial target
+  // Handle pinch gesture: lock onto hovered target or cycle through catalogue
   const handlePinchSelect = () => {
+    if (hoveredGestureTarget) {
+      if (hoveredGestureTarget.type === 'planet' && hoveredGestureTarget.planet) {
+        handleSelectPlanet(hoveredGestureTarget.planet, hoveredGestureTarget.star)
+      } else {
+        handleSelectObject(hoveredGestureTarget.star)
+      }
+      return
+    }
+
     if (!infoPanelOpen) {
       setInfoPanelOpen(true)
     } else if (stars.length > 0) {
@@ -202,13 +230,19 @@ export function ExplorerView({
     }
   }
 
-  // Handle open palm gesture: glide universe target coordinates
+  // Handle open palm swipe: smoothly cycle through universe systems
   const handleHandNavigate = (deltaX: number) => {
-    if (Math.abs(deltaX) > 40 && stars.length > 0) {
-      const dir = deltaX > 0 ? 1 : -1
+    const now = performance.now()
+    if (now - lastSwipeTimeRef.current < 450) return
+
+    swipeDeltaAccumRef.current += deltaX
+    if (Math.abs(swipeDeltaAccumRef.current) > 16 && stars.length > 0) {
+      const dir = swipeDeltaAccumRef.current > 0 ? 1 : -1
       const currentIndex = stars.findIndex((s) => s.id === selectedStarId)
       const nextIndex = (currentIndex + dir + stars.length) % stars.length
       handleSelectStar(stars[nextIndex])
+      lastSwipeTimeRef.current = now
+      swipeDeltaAccumRef.current = 0
     }
   }
 

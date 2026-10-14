@@ -25,11 +25,11 @@ function getGestureHint(
   isPinching: boolean
 ): string {
   if (!isCameraActive) {
-    return 'Press [C] or click "Enable Cockpit Vision" to engage body flight controls.'
+    return 'Click "Enable Camera" or press [C] to engage hand gesture controls.'
   }
 
   if (!isHandDetected) {
-    return 'Raise hand in front of camera with open palm to steer the space simulator.'
+    return 'Raise hand in front of camera with open palm to navigate the universe.'
   }
 
   if (isPinching || gesture === 'pinch') {
@@ -38,13 +38,13 @@ function getGestureHint(
 
   switch (gesture) {
     case 'open_palm':
-      return 'Glide open palm left, right, up, or down to rotate universe coordinates.'
+      return 'Open palm: Sweep left/right to browse systems · Close hands to zoom in · Expand to zoom out.'
     case 'pointing':
-      return 'Aim reticle over any star or planet, then pinch thumb & index to select.'
+      return 'Aim fingertip at any star or planet · Pinch thumb & index to lock on.'
     case 'fist':
-      return 'Fist detected: Camera navigation locked. Open palm to resume rotation.'
+      return 'Fist held: Navigation paused. Hold fist 500ms to return to wide galaxy view.'
     default:
-      return 'Move hand to navigate universe. Pinch thumb & index to target a planet.'
+      return 'Close hands together to zoom in · Expand hands apart to zoom out · Pinch to select.'
   }
 }
 

@@ -81,20 +81,7 @@ describe('Gesture Navigation Engine Suite (Member 2)', () => {
   })
 
   describe('3. Two-Hand Distance Zoom & Single-Hand Depth', () => {
-    it('zooms in when two hands move apart (positive distance delta)', () => {
-      const currentRadius = 100
-      const twoHandData: TwoHandData = {
-        distance: 0.6,
-        prevDistance: 0.5,
-        distanceDelta: 0.1,
-        zoomFactor: 1.2
-      }
-
-      const newRadius = calculateTwoHandZoom(twoHandData, currentRadius, settings.zoomSensitivity)
-      expect(newRadius).toBeLessThan(currentRadius)
-    })
-
-    it('zooms out when two hands move closer together (negative distance delta)', () => {
+    it('zooms in when two hands move closer together (negative distance delta)', () => {
       const currentRadius = 100
       const twoHandData: TwoHandData = {
         distance: 0.4,
@@ -104,24 +91,37 @@ describe('Gesture Navigation Engine Suite (Member 2)', () => {
       }
 
       const newRadius = calculateTwoHandZoom(twoHandData, currentRadius, settings.zoomSensitivity)
+      expect(newRadius).toBeLessThan(currentRadius)
+    })
+
+    it('zooms out when two hands expand apart (positive distance delta)', () => {
+      const currentRadius = 100
+      const twoHandData: TwoHandData = {
+        distance: 0.6,
+        prevDistance: 0.5,
+        distanceDelta: 0.1,
+        zoomFactor: 1.2
+      }
+
+      const newRadius = calculateTwoHandZoom(twoHandData, currentRadius, settings.zoomSensitivity)
       expect(newRadius).toBeGreaterThan(currentRadius)
     })
 
     it('clamps zoom distance within minimum and maximum bounds', () => {
       const extremeZoomIn: TwoHandData = {
-        distance: 1.5,
-        prevDistance: 0.2,
-        distanceDelta: 1.3,
-        zoomFactor: 7.5
+        distance: 0.1,
+        prevDistance: 1.0,
+        distanceDelta: -0.9,
+        zoomFactor: 0.1
       }
       const clampedMin = calculateTwoHandZoom(extremeZoomIn, 20, 5.0, 10, 380)
       expect(clampedMin).toBeGreaterThanOrEqual(10)
 
       const extremeZoomOut: TwoHandData = {
-        distance: 0.1,
-        prevDistance: 1.0,
-        distanceDelta: -0.9,
-        zoomFactor: 0.1
+        distance: 1.5,
+        prevDistance: 0.2,
+        distanceDelta: 1.3,
+        zoomFactor: 7.5
       }
       const clampedMax = calculateTwoHandZoom(extremeZoomOut, 350, 5.0, 10, 380)
       expect(clampedMax).toBeLessThanOrEqual(380)
@@ -129,10 +129,10 @@ describe('Gesture Navigation Engine Suite (Member 2)', () => {
 
     it('supports single-hand depth/pinch zoom fallback', () => {
       const currentRadius = 120
-      const zoomedIn = calculateSingleHandDepthZoom(0.05, currentRadius, settings.zoomSensitivity)
+      const zoomedIn = calculateSingleHandDepthZoom(-0.05, currentRadius, settings.zoomSensitivity)
       expect(zoomedIn).toBeLessThan(currentRadius)
 
-      const zoomedOut = calculateSingleHandDepthZoom(-0.05, currentRadius, settings.zoomSensitivity)
+      const zoomedOut = calculateSingleHandDepthZoom(0.05, currentRadius, settings.zoomSensitivity)
       expect(zoomedOut).toBeGreaterThan(currentRadius)
     })
   })

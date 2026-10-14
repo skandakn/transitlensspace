@@ -499,7 +499,10 @@ export function App() {
 
   const stars = useMemo(() => {
     const predefinedStars = PREDEFINED_OBSERVATIONS.map((o) => o.star)
-    return [selectedStar, ...predefinedStars.filter((s) => s.id !== selectedStar.id)]
+    const isCustom = !predefinedStars.some((s) => s.id === selectedStar.id)
+    return isCustom && selectedStar.id !== '—'
+      ? [...predefinedStars, selectedStar]
+      : predefinedStars
   }, [selectedStar])
 
   // Coordinated workflow hook with client-side detection engine

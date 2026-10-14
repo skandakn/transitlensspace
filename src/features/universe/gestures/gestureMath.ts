@@ -58,9 +58,9 @@ export function calculateTwoHandZoom(
     return currentRadius
   }
 
-  // Moving hands apart (positive delta) zooms in (decreases distance)
-  // Moving hands closer together (negative delta) zooms out (increases distance)
-  const zoomFactor = 1 - twoHandData.distanceDelta * zoomSensitivity * 2.5
+  // Closing hands together (negative delta) zooms in (decreases distance to target)
+  // Expanding hands apart (positive delta) zooms out (increases distance to target)
+  const zoomFactor = 1 + twoHandData.distanceDelta * zoomSensitivity * 2.8
   const newRadius = currentRadius * zoomFactor
 
   return Math.max(minRadius, Math.min(maxRadius, newRadius))
@@ -68,7 +68,7 @@ export function calculateTwoHandZoom(
 
 /**
  * Single-hand pinch/depth zoom fallback when only one hand is visible.
- * Hand moving forward/closer to camera increases hand scale, zooming in.
+ * Closing fingers/pinch zooms in; opening/expanding hand zooms out.
  */
 export function calculateSingleHandDepthZoom(
   currentPinchOrDepthDelta: number,
@@ -80,8 +80,9 @@ export function calculateSingleHandDepthZoom(
   const filteredDelta = applyDeadzone(currentPinchOrDepthDelta, 0.004)
   if (filteredDelta === 0) return currentRadius
 
-  // delta > 0 means moving closer / zooming in
-  const zoomFactor = 1 - filteredDelta * zoomSensitivity * 2.0
+  // Closing fingers (negative delta) zooms in
+  // Opening fingers (positive delta) zooms out
+  const zoomFactor = 1 + filteredDelta * zoomSensitivity * 2.2
   const newRadius = currentRadius * zoomFactor
 
   return Math.max(minRadius, Math.min(maxRadius, newRadius))
@@ -138,7 +139,7 @@ export function findTargetFromFingertip(
   fingertip: { x: number; y: number },
   celestialObjects: CelestialObject[],
   camera: THREE.Camera,
-  hitThreshold = 0.085 // Screen radius threshold (~8.5% of viewport)
+  hitThreshold = 0.13 // Screen radius threshold (~13% of viewport for responsive targeting)
 ): GestureTarget | null {
   let closestTarget: GestureTarget | null = null
   let minDistance = hitThreshold
