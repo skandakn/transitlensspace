@@ -124,6 +124,7 @@ export function TopBar({
           size="sm"
           onClick={onResetAnalysis}
           title="Reset light curve to raw data"
+          aria-label="Reset light curve to raw data"
           className="hidden sm:inline-flex"
         >
           <RotateCcw className="w-3.5 h-3.5" />
