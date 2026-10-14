@@ -8,7 +8,9 @@
 export type HandGestureType =
   | 'none'
   | 'open-palm'
+  | 'open_palm'
   | 'closed-fist'
+  | 'fist'
   | 'pinch'
   | 'pointing'
   | 'two-hand-zoom'
@@ -36,7 +38,24 @@ export interface HandLandmark2D {
   z?: number
 }
 
+export type HandLandmark = HandLandmark2D
 export type HandSide = 'Left' | 'Right'
+
+export interface FaceDetectionData {
+  /** True when a human face is actively detected in the webcam stream */
+  detected: boolean
+  /** Detection confidence score (0.0 to 1.0) */
+  confidence: number
+  /** Normalized bounding box { x, y, width, height } where (0,0) is top-left */
+  box?: {
+    x: number
+    y: number
+    width: number
+    height: number
+  }
+  /** Key facial landmarks (e.g. eyes, nose tip, mouth) */
+  keypoints?: Array<{ x: number; y: number }>
+}
 
 export interface SingleHandData {
   /** 21 raw normalized landmarks from MediaPipe HandLandmarker */
@@ -47,10 +66,14 @@ export interface SingleHandData {
   wrist: HandLandmark2D
   /** Landmark 8: Index finger tip */
   indexTip: HandLandmark2D
+  /** Alias for indexTip to support Member 2 raycasting */
+  indexTipPosition?: HandLandmark2D
   /** Landmark 4: Thumb tip */
   thumbTip: HandLandmark2D
   /** Calculated centroid of palm landmarks [0, 5, 9, 17] */
   palmCenter: HandLandmark2D
+  /** Alias for palmCenter to support Member 2 camera controller */
+  position?: HandLandmark2D
   /** Euclidean distance between thumb tip and index tip normalized by hand scale */
   pinchDistance: number
   /** Whether the thumb and index finger are currently touching or within pinch threshold */
@@ -78,12 +101,16 @@ export interface SingleHandData {
 export interface TwoHandData {
   /** Current distance between the two palm centers in normalized space */
   distance: number
+  /** Alias for distance */
+  handDistance?: number
   /** Previous distance between the two palm centers */
   prevDistance: number
   /** Change in distance (positive = moving apart / zoom in, negative = moving together / zoom out) */
   distanceDelta: number
   /** Proportional zoom scale multiplier */
   zoomFactor: number
+  /** True when both hands are visible in frame */
+  bothHandsVisible?: boolean
 }
 
 export interface GestureFrame {
@@ -105,7 +132,11 @@ export interface GestureFrame {
   trackingStatus: HandTrackingStatus
   /** Human-readable error message if status is permission-denied, no-camera, or model-error */
   errorMessage: string | null
+  /** Real-time face detection data from the shared webcam stream */
+  face?: FaceDetectionData | null
 }
+
+export type ProcessedFrame = GestureFrame
 
 export interface HandTrackingConfig {
   /** Landmark exponential smoothing alpha (0.0 to 1.0; higher = faster response, lower = smoother) */
@@ -134,6 +165,10 @@ export interface HandTrackingConfig {
   wasmLoaderPath?: string
   /** URL or path to hand_landmarker.task model file */
   modelAssetPath?: string
+  /** URL or path to face_landmarker.task model file */
+  faceModelAssetPath?: string
+  /** Whether face detection is enabled concurrently with hand tracking */
+  enableFaceDetection?: boolean
 }
 
 export const DEFAULT_HAND_TRACKING_CONFIG: HandTrackingConfig = {
@@ -149,5 +184,7 @@ export const DEFAULT_HAND_TRACKING_CONFIG: HandTrackingConfig = {
   videoHeight: 480,
   delegate: 'GPU',
   wasmLoaderPath: 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.1.0/wasm',
-  modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task'
+  modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task',
+  faceModelAssetPath: 'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task',
+  enableFaceDetection: true
 }
