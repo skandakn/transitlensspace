@@ -34,10 +34,9 @@ export function Starfield({
   const actualCount = quality === 'low' ? Math.min(count, 4000) : count
 
   // Generate spherical distribution with astronomical color temperatures
-  const { positions, colors, sizes } = useMemo(() => {
+  const { positions, colors } = useMemo(() => {
     const pos = new Float32Array(actualCount * 3)
     const col = new Float32Array(actualCount * 3)
-    const siz = new Float32Array(actualCount)
 
     const colorPalette = [
       new THREE.Color('#ffffff'), // Pure white (40%)
@@ -69,12 +68,9 @@ export function Starfield({
       col[i * 3] = selectedColor.r
       col[i * 3 + 1] = selectedColor.g
       col[i * 3 + 2] = selectedColor.b
-
-      // Varying magnitude sizes
-      siz[i] = rand() < 0.05 ? rand() * 2.5 + 2.0 : rand() * 1.5 + 0.8
     }
 
-    return { positions: pos, colors: col, sizes: siz }
+    return { positions: pos, colors: col }
   }, [actualCount, radiusMin, radiusMax])
 
   // Subtle deep universe slow rotation

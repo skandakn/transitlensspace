@@ -183,30 +183,33 @@ export function UniverseScene({
   const [isSearchOpen, setIsSearchOpen] = useState(false)
   const [resetTrigger, setResetTrigger] = useState(0)
 
-  // Target selection state
-  const [activeTarget, setActiveTarget] = useState<SelectedTarget>(null)
-  const [selectedPlanetId, setSelectedPlanetId] = useState<string | undefined>(controlledPlanetId)
+  // User manual target selection override
+  const [userSelectedTarget, setUserSelectedTarget] = useState<SelectedTarget | undefined>(undefined)
+  const [userSelectedPlanetId, setUserSelectedPlanetId] = useState<string | undefined>(undefined)
 
   const searchContainerRef = useRef<HTMLDivElement>(null)
 
-  // Synchronize incoming controlled target
-  useEffect(() => {
+  // Derive active celestial target (respects manual interaction, otherwise props)
+  const activeTarget: SelectedTarget = useMemo(() => {
+    if (userSelectedTarget !== undefined) {
+      return userSelectedTarget
+    }
     if (selectedObjectId) {
       const star = celestialObjects.find((s) => s.id === selectedObjectId)
       if (star) {
         if (controlledPlanetId && star.planets) {
           const planet = star.planets.find((p) => p.id === controlledPlanetId)
           if (planet) {
-            setActiveTarget({ type: 'planet', planet, parentStar: star })
-            setSelectedPlanetId(planet.id)
-            return
+            return { type: 'planet', planet, parentStar: star }
           }
         }
-        setActiveTarget({ type: 'star', star })
-        setSelectedPlanetId(undefined)
+        return { type: 'star', star }
       }
     }
-  }, [selectedObjectId, controlledPlanetId, celestialObjects])
+    return null
+  }, [userSelectedTarget, selectedObjectId, controlledPlanetId, celestialObjects])
+
+  const selectedPlanetId = userSelectedPlanetId !== undefined ? userSelectedPlanetId : controlledPlanetId
 
   // Handle outside click to close search dropdown
   useEffect(() => {
@@ -235,20 +238,20 @@ export function UniverseScene({
   }, [activeTarget])
 
   const handleSelectStar = (star: CelestialObject) => {
-    setActiveTarget({ type: 'star', star })
-    setSelectedPlanetId(undefined)
+    setUserSelectedTarget({ type: 'star', star })
+    setUserSelectedPlanetId(undefined)
     onSelectObject?.(star)
   }
 
   const handleSelectPlanet = (planet: CelestialPlanet, parentStar: CelestialObject) => {
-    setActiveTarget({ type: 'planet', planet, parentStar })
-    setSelectedPlanetId(planet.id)
+    setUserSelectedTarget({ type: 'planet', planet, parentStar })
+    setUserSelectedPlanetId(planet.id)
     onSelectPlanet?.(planet, parentStar)
   }
 
   const handleResetCamera = () => {
-    setActiveTarget(null)
-    setSelectedPlanetId(undefined)
+    setUserSelectedTarget(null)
+    setUserSelectedPlanetId(undefined)
     setResetTrigger((prev) => prev + 1)
   }
 
@@ -528,8 +531,8 @@ export function UniverseScene({
       <CelestialDetailsPanel
         target={activeTarget}
         onClose={() => {
-          setActiveTarget(null)
-          setSelectedPlanetId(undefined)
+          setUserSelectedTarget(null)
+          setUserSelectedPlanetId(undefined)
         }}
         onSelectStar={handleSelectStar}
         onSelectPlanet={handleSelectPlanet}
