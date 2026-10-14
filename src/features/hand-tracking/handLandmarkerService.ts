@@ -92,6 +92,8 @@ export class HandLandmarkerService {
     return this.initPromise
   }
 
+  private lastTimestampMs = 0
+
   /**
    * Detects hand landmarks for a single video frame.
    */
@@ -109,7 +111,9 @@ export class HandLandmarkerService {
     }
 
     try {
-      return this.landmarker.detectForVideo(video, timestampMs)
+      const safeTimestamp = Math.max(timestampMs, this.lastTimestampMs + 1)
+      this.lastTimestampMs = safeTimestamp
+      return this.landmarker.detectForVideo(video, safeTimestamp)
     } catch (err) {
       console.error('[HandTracking] Inference error on video frame:', err)
       return null
@@ -136,6 +140,7 @@ export class HandLandmarkerService {
       }
       this.landmarker = null
     }
+    this.lastTimestampMs = 0
     this.initPromise = null
     this.isInitializing = false
   }

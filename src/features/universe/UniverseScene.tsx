@@ -329,8 +329,8 @@ export function UniverseScene({
         </Canvas>
       </Suspense>
 
-      {/* Hand Gesture Navigation HUD Overlay */}
-      {enableGestures && (
+      {/* Hand Gesture Navigation HUD Overlay (standalone fallback only) */}
+      {enableGestures && !hideDefaultControls && (
         <GestureHUDOverlay
           mode={gestureMode}
           onModeChange={setGestureMode}

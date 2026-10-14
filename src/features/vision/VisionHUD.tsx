@@ -19,21 +19,47 @@ export function VisionHUD({
   onHandNavigate,
   onHeadOrient,
   className = '',
+  isCameraActive: sharedIsCameraActive,
+  isCameraLoading: sharedIsCameraLoading,
+  cameraError: sharedCameraError,
+  stream: sharedStream,
+  videoRef: sharedVideoRef,
+  onEnableCamera: sharedOnEnableCamera,
+  onToggleCamera: sharedOnToggleCamera,
 }: VisionHUDProps) {
   const [isOnboardingOpen, setIsOnboardingOpen] = useState(false)
   const [isPrivacyOpen, setIsPrivacyOpen] = useState(false)
 
-  // 1. Camera manager
+  // 1. Camera manager: fallback to useWebcam when shared camera is not provided
   const {
-    state: cameraState,
-    videoRef,
+    state: internalCameraState,
+    videoRef: internalVideoRef,
     isDemoMode,
-    startCamera,
-    toggleCamera,
+    startCamera: internalStartCamera,
+    toggleCamera: internalToggleCamera,
     cyclePosition,
     toggleMinimize,
     enableDemoMode,
-  } = useWebcam({ initialPosition: 'bottom-right' })
+  } = useWebcam({ initialPosition: 'bottom-left' })
+
+  const isIntegrated = Boolean(sharedOnEnableCamera)
+  const videoRef = isIntegrated && sharedVideoRef ? sharedVideoRef : internalVideoRef
+
+  const cameraState: typeof internalCameraState = isIntegrated
+    ? {
+        isActive: Boolean(sharedIsCameraActive),
+        isPermissionGranted: Boolean(sharedIsCameraActive),
+        permissionDenied: Boolean(sharedCameraError?.toLowerCase().includes('denied')),
+        error: sharedCameraError ?? null,
+        position: internalCameraState.position,
+        isMinimized: internalCameraState.isMinimized,
+        stream: sharedStream ?? null,
+        isLoading: Boolean(sharedIsCameraLoading),
+      }
+    : internalCameraState
+
+  const startCamera = isIntegrated && sharedOnEnableCamera ? sharedOnEnableCamera : internalStartCamera
+  const toggleCamera = isIntegrated && sharedOnToggleCamera ? sharedOnToggleCamera : internalToggleCamera
 
   // 2. Face tracking with MediaPipe
   const { faceState, toggleHeadAdjustments } = useFaceTracking({

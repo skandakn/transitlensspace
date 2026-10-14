@@ -220,8 +220,12 @@ export function GestureUniverseController({
         primaryHand.isPinching ||
         primaryHand.pinchState === 'start'
 
-      // Screen-space raycast to detect celestial target near fingertip
-      const hitTarget = findTargetFromFingertip(primaryHand.indexTip, celestialObjects, camera)
+      // Screen-space raycast to detect celestial target near fingertip (mirrored X to match screen coordinate)
+      const screenFingertip = {
+        x: 1 - primaryHand.indexTip.x,
+        y: primaryHand.indexTip.y
+      }
+      const hitTarget = findTargetFromFingertip(screenFingertip, celestialObjects, camera)
 
       if (hitTarget) {
         if (hoveredTargetRef.current?.id === hitTarget.id) {

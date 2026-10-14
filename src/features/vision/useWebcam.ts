@@ -7,7 +7,7 @@ export interface UseWebcamOptions {
 }
 
 export function useWebcam(options: UseWebcamOptions = {}) {
-  const { initialPosition = 'bottom-right', autoStart = false } = options
+  const { initialPosition = 'bottom-left', autoStart = false } = options
 
   const [state, setState] = useState<CameraState>({
     isActive: false,

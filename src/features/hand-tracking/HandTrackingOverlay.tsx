@@ -66,6 +66,21 @@ export function HandTrackingOverlay({
   const [isMinimized, setIsMinimized] = useState(false)
   const [showInstructions, setShowInstructions] = useState(false)
 
+  // Ensure mirrored preview video element is connected to active stream
+  useEffect(() => {
+    const el = videoRef.current
+    if (isCameraActive && el && tracking.stream) {
+      el.muted = true
+      el.defaultMuted = true
+      el.playsInline = true
+      el.autoplay = true
+      if (el.srcObject !== tracking.stream) {
+        el.srcObject = tracking.stream
+      }
+      el.play().catch(() => {})
+    }
+  }, [isCameraActive, tracking.stream, videoRef])
+
   // Draw 21-point skeleton and gesture reticles on canvas
   useEffect(() => {
     const canvas = canvasRef.current
@@ -374,7 +389,21 @@ export function HandTrackingOverlay({
             <div className="relative w-64 h-48 bg-black overflow-hidden">
               {/* Hidden or mirrored raw video element */}
               <video
-                ref={videoRef}
+                ref={(node) => {
+                  if (videoRef) {
+                    ;(videoRef as React.MutableRefObject<HTMLVideoElement | null>).current = node
+                  }
+                  if (node && tracking.stream) {
+                    node.muted = true
+                    node.defaultMuted = true
+                    node.playsInline = true
+                    node.autoplay = true
+                    if (node.srcObject !== tracking.stream) {
+                      node.srcObject = tracking.stream
+                    }
+                    node.play().catch(() => {})
+                  }
+                }}
                 className="w-full h-full object-cover transform scale-x-[-1]"
                 playsInline
                 muted

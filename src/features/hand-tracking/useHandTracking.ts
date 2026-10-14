@@ -53,6 +53,8 @@ const EMPTY_FRAME: GestureFrame = {
 export interface UseHandTrackingReturn {
   /** Underlying video element ref */
   videoRef: React.RefObject<HTMLVideoElement | null>
+  /** Active webcam MediaStream */
+  stream: MediaStream | null
   /** High-level tracking status */
   status: HandTrackingStatus
   /** Current gesture state frame */
@@ -115,6 +117,9 @@ export function useHandTracking(
   }, [userConfig])
 
   const videoRef = useRef<HTMLVideoElement | null>(null)
+  const masterVideoRef = useRef<HTMLVideoElement | null>(null)
+  const streamRef = useRef<MediaStream | null>(null)
+  const [stream, setStream] = useState<MediaStream | null>(null)
   const rafIdRef = useRef<number | null>(null)
   const isRunningRef = useRef<boolean>(false)
 
@@ -167,7 +172,20 @@ export function useHandTracking(
     loopRef.current = (timestamp: number) => {
     if (!isRunningRef.current) return
 
-    const video = videoRef.current
+    // Ensure display videoRef has stream attached if it mounted after camera started
+    if (videoRef.current && streamRef.current && videoRef.current.srcObject !== streamRef.current) {
+      videoRef.current.muted = true
+      videoRef.current.defaultMuted = true
+      videoRef.current.playsInline = true
+      videoRef.current.autoplay = true
+      videoRef.current.srcObject = streamRef.current
+      videoRef.current.play().catch(() => {})
+    }
+
+    const video = (masterVideoRef.current && masterVideoRef.current.readyState >= 2)
+      ? masterVideoRef.current
+      : videoRef.current
+
     if (!video || video.readyState < 2) {
       rafIdRef.current = requestAnimationFrame((ts) => loopRef.current(ts))
       return
@@ -339,33 +357,57 @@ export function useHandTracking(
     setStatus('requesting-permission')
 
     try {
-      let video = videoRef.current
-      if (!video) {
-        video = document.createElement('video')
-        video.style.display = 'none'
-        document.body.appendChild(video)
-        videoRef.current = video
+      if (!masterVideoRef.current) {
+        const v = document.createElement('video')
+        v.setAttribute('playsinline', 'true')
+        v.muted = true
+        v.defaultMuted = true
+        v.autoplay = true
+        v.style.position = 'fixed'
+        v.style.bottom = '0px'
+        v.style.left = '0px'
+        v.style.width = '160px'
+        v.style.height = '120px'
+        v.style.opacity = '0.001'
+        v.style.pointerEvents = 'none'
+        v.style.zIndex = '-1000'
+        document.body.appendChild(v)
+        masterVideoRef.current = v
       }
 
       const activeConfig = configRef.current
 
       // 1. Request hardware video stream
-      await startWebcam(video, activeConfig.videoWidth, activeConfig.videoHeight)
+      const activeStream = await startWebcam(masterVideoRef.current, activeConfig.videoWidth, activeConfig.videoHeight)
+      streamRef.current = activeStream
+      setStream(activeStream)
 
-      // 2. Load and initialize MediaPipe HandLandmarker
-      setStatus('loading-model')
-      const landmarkerService = HandLandmarkerService.getInstance()
-      await landmarkerService.initialize(activeConfig)
+      // Also attach to display videoRef if already in DOM
+      if (videoRef.current) {
+        videoRef.current.muted = true
+        videoRef.current.defaultMuted = true
+        videoRef.current.playsInline = true
+        videoRef.current.autoplay = true
+        videoRef.current.srcObject = activeStream
+        videoRef.current.play().catch(() => {})
+      }
 
-      // 3. Start RAF loop
+      // 2. Start RAF loop immediately so video feed is active and visible to user
       isRunningRef.current = true
       lastDetectionTimeRef.current = performance.now()
       lastFrameTimestampRef.current = performance.now()
       fpsFrameCountRef.current = 0
       fpsLastCalculatedRef.current = performance.now()
-
-      setStatus('tracking-lost') // Begins in awaiting hands state
+      setStatus('tracking-lost') // Camera is LIVE and awaiting hands
       rafIdRef.current = requestAnimationFrame((ts) => loopRef.current(ts))
+
+      // 3. Load and initialize MediaPipe HandLandmarker in background
+      try {
+        const landmarkerService = HandLandmarkerService.getInstance()
+        await landmarkerService.initialize(activeConfig)
+      } catch (modelErr: any) {
+        console.warn('[HandTracking] MediaPipe model initialization warning (camera remains active):', modelErr)
+      }
     } catch (err: any) {
       isRunningRef.current = false
       if (err instanceof CameraError) {
@@ -383,7 +425,23 @@ export function useHandTracking(
           err?.message || 'Failed to initialize vision tracking model.'
         )
       }
-      stopWebcam(videoRef.current)
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((track) => {
+          try {
+            track.stop()
+          } catch {
+            // ignore
+          }
+        })
+        streamRef.current = null
+      }
+      setStream(null)
+      if (masterVideoRef.current) {
+        stopWebcam(masterVideoRef.current)
+      }
+      if (videoRef.current) {
+        stopWebcam(videoRef.current)
+      }
     }
   }, [])
 
@@ -397,7 +455,28 @@ export function useHandTracking(
       rafIdRef.current = null
     }
 
-    stopWebcam(videoRef.current)
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => {
+        try {
+          track.stop()
+        } catch {
+          // ignore
+        }
+      })
+      streamRef.current = null
+    }
+    setStream(null)
+
+    if (masterVideoRef.current) {
+      stopWebcam(masterVideoRef.current)
+      masterVideoRef.current.remove()
+      masterVideoRef.current = null
+    }
+
+    if (videoRef.current) {
+      stopWebcam(videoRef.current)
+    }
+
     prevHandsRef.current = {}
     prevTwoHandRef.current = null
     lastDetectionTimeRef.current = 0
@@ -431,18 +510,37 @@ export function useHandTracking(
 
   // Teardown hardware tracks on component unmount
   useEffect(() => {
+    const activeVideo = videoRef.current
     return () => {
       isRunningRef.current = false
       if (rafIdRef.current !== null) {
         cancelAnimationFrame(rafIdRef.current)
         rafIdRef.current = null
       }
-      stopWebcam(videoRef.current)
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((track) => {
+          try {
+            track.stop()
+          } catch {
+            // ignore
+          }
+        })
+        streamRef.current = null
+      }
+      if (masterVideoRef.current) {
+        stopWebcam(masterVideoRef.current)
+        masterVideoRef.current.remove()
+        masterVideoRef.current = null
+      }
+      if (activeVideo) {
+        stopWebcam(activeVideo)
+      }
     }
   }, [])
 
   return {
     videoRef,
+    stream,
     status,
     currentFrame,
     frame: currentFrame ?? EMPTY_FRAME,

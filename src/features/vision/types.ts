@@ -114,4 +114,18 @@ export interface VisionHUDProps {
   onHeadOrient?: (orientation: HeadOrientation) => void
   /** Optional custom class name */
   className?: string
+  /** Shared camera active state from Member 1 */
+  isCameraActive?: boolean
+  /** Shared camera loading state from Member 1 */
+  isCameraLoading?: boolean
+  /** Shared camera error message from Member 1 */
+  cameraError?: string | null
+  /** Shared camera MediaStream from Member 1 */
+  stream?: MediaStream | null
+  /** Shared video element ref from Member 1 */
+  videoRef?: React.RefObject<HTMLVideoElement | null>
+  /** Callback to start or enable camera */
+  onEnableCamera?: () => Promise<void> | void
+  /** Callback to stop or toggle camera */
+  onToggleCamera?: () => Promise<void> | void
 }
