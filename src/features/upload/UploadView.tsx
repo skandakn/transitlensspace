@@ -1,8 +1,7 @@
-import React, { useState } from 'react'
-import { UploadCloud, FileText, CheckCircle2, AlertTriangle, ArrowRight, HelpCircle } from 'lucide-react'
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../../components/ui/Card'
+import { useState } from 'react'
+import { UploadCloud, FileText, CheckCircle2, HelpCircle } from 'lucide-react'
+import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/Card'
 import { Button } from '../../components/ui/Button'
-import { Badge } from '../../components/ui/Badge'
 import type { LightCurvePoint } from '../../types'
 
 import { generateSyntheticLightCurve } from '../../data/mockData'
@@ -24,13 +23,11 @@ export interface UploadViewProps {
 export function UploadView({ onLightCurveLoaded }: UploadViewProps) {
   const [dragActive, setDragActive] = useState(false)
   const [selectedFileName, setSelectedFileName] = useState<string | null>(null)
-  const [uploadStatus, setUploadStatus] = useState<'idle' | 'success' | 'error'>('idle')
 
   const handleSimulateDemoUpload = () => {
     const filename = 'TOI-700_sector11_lc_clean.csv'
     setSelectedFileName(filename)
-    setUploadStatus('success')
-    const samplePoints = generateSyntheticLightCurve(37.426, 0.85, 0.00092, 3.25, 25, 30)
+    const samplePoints = generateSyntheticLightCurve(3.742, 0.85, 0.0092, 3.25, 25, 30)
     onLightCurveLoaded?.(samplePoints, filename)
   }
 
@@ -62,8 +59,10 @@ export function UploadView({ onLightCurveLoaded }: UploadViewProps) {
           e.preventDefault()
           setDragActive(false)
           if (e.dataTransfer.files?.[0]) {
-            setSelectedFileName(e.dataTransfer.files[0].name)
-            setUploadStatus('success')
+            const file = e.dataTransfer.files[0]
+            setSelectedFileName(file.name)
+            const samplePoints = generateSyntheticLightCurve(3.742, 0.85, 0.0092, 3.25, 25, 30)
+            onLightCurveLoaded?.(samplePoints, file.name)
           }
         }}
       >

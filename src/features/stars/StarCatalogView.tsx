@@ -1,7 +1,7 @@
-import React, { useState } from 'react'
-import { Sparkles, Search, Compass, ExternalLink, Filter } from 'lucide-react'
+import { useState } from 'react'
+import { Sparkles, Search } from 'lucide-react'
 import type { StarObservation } from '../../types'
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../../components/ui/Card'
+import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/Card'
 import { Badge } from '../../components/ui/Badge'
 import { Button } from '../../components/ui/Button'
 import {

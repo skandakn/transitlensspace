@@ -1,7 +1,6 @@
-import React, { useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import {
   ResponsiveContainer,
-  ScatterChart,
   Scatter,
   XAxis,
   YAxis,
@@ -10,7 +9,7 @@ import {
   Line,
   ComposedChart
 } from 'recharts'
-import { ZoomIn, ZoomOut, Filter, Sparkles, AlertCircle } from 'lucide-react'
+import { Filter, Sparkles } from 'lucide-react'
 import type { LightCurvePoint, TransitEvent } from '../../types'
 import { Button } from '../../components/ui/Button'
 import { Badge } from '../../components/ui/Badge'

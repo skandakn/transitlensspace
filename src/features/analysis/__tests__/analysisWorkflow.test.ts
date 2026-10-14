@@ -6,7 +6,7 @@ import {
   generateNoisyLightCurve
 } from '../transitDetection'
 import { determineOutcome } from '../outcomeUtils'
-import { generateSyntheticLightCurve, MOCK_STARS } from '../../../data/mockData'
+import { generateSyntheticLightCurve } from '../../../data/mockData'
 import type { AnalysisResult, StarObservation } from '../../../types'
 
 describe('Analysis Workflow & Results Panel (Member 6)', () => {

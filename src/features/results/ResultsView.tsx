@@ -1,14 +1,9 @@
-import React, { useState } from 'react'
+import { useState } from 'react'
 import {
   FileSpreadsheet,
-  Download,
-  CheckCircle2,
-  AlertTriangle,
-  XCircle,
-  Share2,
-  Filter
+  Download
 } from 'lucide-react'
-import type { AnalysisResult, TransitEvent } from '../../types'
+import type { AnalysisResult } from '../../types'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../../components/ui/Card'
 import { Badge } from '../../components/ui/Badge'
 import { Button } from '../../components/ui/Button'
@@ -33,7 +28,7 @@ export interface ResultsViewProps {
  * - Vetting metrics (even-odd transit depth test, secondary eclipse check)
  * - Exporting analysis reports as JSON / CSV / Publication-ready table
  */
-export function ResultsView({ results, onExportJson }: ResultsViewProps) {
+export function ResultsView({ results, onExportJson: _onExportJson }: ResultsViewProps) {
   const [filterDisposition, setFilterDisposition] = useState<string>('ALL')
 
   // Collect all events across runs
