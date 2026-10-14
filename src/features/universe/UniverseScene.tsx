@@ -52,6 +52,7 @@ function checkWebGLSupport(): boolean {
 }
 
 
+
 /**
  * Loading Experience Fallback
  */
@@ -236,6 +237,7 @@ export function UniverseScene({
       {/* 3D Canvas Scene */}
       <Suspense fallback={<UniverseLoader />}>
         <Canvas
+          onPointerMissed={handleResetCamera}
           camera={{
             position: initialCameraPosition,
             fov: 50,
