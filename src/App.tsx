@@ -12,6 +12,7 @@ import { PREDEFINED_OBSERVATIONS, type PredefinedObservation } from './data/obse
 import { MOCK_STARS, generateSyntheticLightCurve } from './data/mockData'
 import { Badge } from './components/ui/Badge'
 import { UniverseScene, starObservationsToCelestialObjects } from './features/universe'
+import { BUNDLED_CELESTIAL_SYSTEMS } from './data/astronomyData'
 import type {
   AnalysisResult,
   LightCurvePoint,
@@ -155,6 +156,7 @@ function DiscoveryWorkspace({
                 <optgroup label="🌟 Known Planetary Transit Signals">
                   <option value="TOI-700">TOI-700 — Calibrated Demo Data (TESS Sector 11-13) [Periodic Dips]</option>
                   <option value="Kepler-90">Kepler-90 — Real Astronomical Data (Kepler Q1-Q17) [Multi-Planet]</option>
+                  <option value="TRAPPIST-1">TRAPPIST-1 — Real Astronomical Data (Spitzer/K2) [7-Planet System]</option>
                   <option value="WASP-12">WASP-12 — Real Astronomical Data (TESS Fast Cadence) [Ultra-Hot Jupiter]</option>
                 </optgroup>
                 <optgroup label="➖ Flat Baseline Control (No Transits)">
@@ -442,7 +444,39 @@ export function App() {
   }
 
   const celestialObjects = useMemo(() => {
-    return starObservationsToCelestialObjects(stars)
+    // Map bundled verified systems with actual star observations
+    const bundledWithObs = BUNDLED_CELESTIAL_SYSTEMS.map((system) => {
+      const matched = PREDEFINED_OBSERVATIONS.find(
+        (o) =>
+          o.id.toLowerCase() === system.id.toLowerCase() ||
+          o.star.id.toLowerCase() === system.id.toLowerCase() ||
+          system.name.toLowerCase().includes(o.id.toLowerCase()) ||
+          o.star.name.toLowerCase().includes(system.name.toLowerCase())
+      )
+      return {
+        ...system,
+        starObservation: matched?.star || system.starObservation
+      }
+    })
+
+    // Include any custom or uploaded stars not present in bundled set
+    const customStars = stars.filter(
+      (s) =>
+        s.id !== '—' &&
+        !bundledWithObs.some(
+          (b) =>
+            b.id.toLowerCase() === s.id.toLowerCase() ||
+            b.name.toLowerCase() === s.name.toLowerCase() ||
+            s.name.toLowerCase().includes(b.name.toLowerCase())
+        )
+    )
+
+    if (customStars.length === 0) {
+      return bundledWithObs
+    }
+
+    const adaptedCustom = starObservationsToCelestialObjects(customStars)
+    return [...bundledWithObs, ...adaptedCustom]
   }, [stars])
 
   const handleSelectStar = (star: StarObservation) => {
@@ -450,7 +484,9 @@ export function App() {
       (o) =>
         o.id.toLowerCase() === star.id.toLowerCase() ||
         o.star.id.toLowerCase() === star.id.toLowerCase() ||
-        o.star.name.toLowerCase() === star.name.toLowerCase()
+        o.star.name.toLowerCase() === star.name.toLowerCase() ||
+        star.name.toLowerCase().includes(o.id.toLowerCase()) ||
+        o.name.toLowerCase().includes(star.name.toLowerCase())
     )
     if (matched) {
       handleSelectObservation(matched.id)
@@ -510,9 +546,27 @@ export function App() {
               celestialObjects={celestialObjects}
               selectedObjectId={selectedStar.id}
               onSelectObject={(obj) => {
-                if (obj.starObservation) {
-                  handleSelectStar(obj.starObservation)
+                const matchedStar = stars.find(
+                  (s) =>
+                    s.id.toLowerCase() === obj.id.toLowerCase() ||
+                    s.name.toLowerCase() === obj.name.toLowerCase() ||
+                    obj.name.toLowerCase().includes(s.name.toLowerCase())
+                ) || obj.starObservation
+                if (matchedStar) {
+                  handleSelectStar(matchedStar)
                 }
+              }}
+              onAnalyzeLightCurve={(star) => {
+                const matchedStar = stars.find(
+                  (s) =>
+                    s.id.toLowerCase() === star.id.toLowerCase() ||
+                    s.name.toLowerCase() === star.name.toLowerCase() ||
+                    star.name.toLowerCase().includes(s.name.toLowerCase())
+                ) || star.starObservation
+                if (matchedStar) {
+                  handleSelectStar(matchedStar)
+                }
+                setActiveTab('analysis')
               }}
               className="h-full w-full"
             />
