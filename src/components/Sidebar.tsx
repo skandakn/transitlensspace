@@ -2,6 +2,7 @@ import React from 'react'
 import {
   Orbit,
   Sparkles,
+  Compass,
   UploadCloud,
   FileSpreadsheet,
   BookOpen,
@@ -27,6 +28,13 @@ export function Sidebar({
   onCloseMobile
 }: SidebarProps) {
   const navItems = [
+    {
+      id: 'universe' as NavigationTab,
+      label: '3D Universe',
+      subtitle: 'Real-time galaxy & star explorer',
+      icon: Compass,
+      badge: '3D'
+    },
     {
       id: 'analysis' as NavigationTab,
       label: 'Transit Analysis',

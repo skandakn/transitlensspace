@@ -163,4 +163,71 @@ describe('Analysis Workflow & Results Panel (Member 6)', () => {
       expect(outcomeFailed.badgeVariant).toBe('warning')
     })
   })
+
+  describe('Comprehensive Robustness & Input Validation Tests', () => {
+    it('handles repeating-dip signal and populates detected transit intervals', async () => {
+      // Periodic transit signal with period = 3.74d over 25 days baseline
+      const transitPoints = generateSyntheticLightCurve(3.742, 0.85, 0.0092, 3.25, 25, 30)
+      const result = await runTransitDetection(mockStar, transitPoints)
+
+      expect(result.status).toBe('completed')
+      expect(result.transitEvents.length).toBeGreaterThanOrEqual(1)
+      expect(result.bestCandidate).toBeDefined()
+      expect(result.bestCandidate?.period).toBeCloseTo(3.74, 0.2)
+      expect(result.detectedIntervals).toBeDefined()
+      expect(result.detectedIntervals!.length).toBeGreaterThanOrEqual(3)
+
+      const outcome = determineOutcome(result)
+      expect(outcome.type).toBe('POTENTIAL_TRANSIT')
+      expect(outcome.label).toBe('Potential Transit Detected')
+    })
+
+    it('gracefully handles flat light curves with zero detected transit intervals', async () => {
+      const flatPoints = generateFlatLightCurve(25, 30)
+      const result = await runTransitDetection(mockStar, flatPoints)
+
+      expect(result.status).toBe('completed')
+      expect(result.transitEvents.length).toBe(0)
+      expect(result.bestCandidate).toBeUndefined()
+
+      const outcome = determineOutcome(result)
+      expect(outcome.type).toBe('NO_TRANSIT')
+      expect(outcome.label).toBe('No Convincing Transit Found')
+    })
+
+    it('gracefully handles noisy flare star signals without crashing and classifies as Inconclusive', async () => {
+      const noisyPoints = generateNoisyLightCurve(15, 30)
+      const result = await runTransitDetection(mockStar, noisyPoints)
+
+      const outcome = determineOutcome(result)
+      expect(outcome.type).toBe('INCONCLUSIVE')
+      expect(outcome.label).toBe('Inconclusive')
+    })
+
+    it('gracefully rejects invalid inputs: empty array, non-array, and sparse (<15 points)', async () => {
+      // 1. Empty array
+      const emptyValidation = validateObservationData(mockStar, [])
+      expect(emptyValidation.valid).toBe(false)
+
+      // 2. Sparse array (< 15 points)
+      const sparsePoints = Array.from({ length: 8 }, (_, i) => ({ time: i * 0.5, flux: 1.0 }))
+      const sparseValidation = validateObservationData(mockStar, sparsePoints)
+      expect(sparseValidation.valid).toBe(false)
+      expect(sparseValidation.reason).toContain('Insufficient photometric data points')
+
+      // 3. Invalid types (NaN / non-finite)
+      const corruptPoints = [
+        { time: NaN, flux: 1.0 },
+        { time: 1.0, flux: Infinity },
+        { time: 2.0, flux: NaN }
+      ]
+      const corruptValidation = validateObservationData(mockStar, corruptPoints)
+      expect(corruptValidation.valid).toBe(false)
+
+      // 4. Engine handles corrupt input safely by throwing informative validation error
+      await expect(runTransitDetection(mockStar, corruptPoints)).rejects.toThrow(
+        /Insufficient photometric data points|Invalid observation data/
+      )
+    })
+  })
 })
