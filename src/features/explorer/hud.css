@@ -1,0 +1,435 @@
+/**
+ * hud.css – design tokens and micro-animations for the TransitLens Explorer HUD.
+ *
+ * Scoped to .hud-* classes so nothing bleeds into the rest of the application.
+ * All colours reference the CSS custom properties defined in index.css.
+ */
+
+/* ─────────────────────────────────────────────
+   Panel base
+───────────────────────────────────────────── */
+.hud-panel {
+  background: rgba(7, 11, 20, 0.72);
+  backdrop-filter: blur(20px) saturate(140%);
+  -webkit-backdrop-filter: blur(20px) saturate(140%);
+  border: 1px solid rgba(89, 214, 226, 0.14);
+  border-radius: 14px;
+  color: var(--text-primary, #e5edf6);
+  box-shadow:
+    0 0 0 1px rgba(89, 214, 226, 0.05),
+    0 8px 32px rgba(0, 0, 0, 0.55),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  transition:
+    opacity 0.25s ease,
+    transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
+    border-color 0.2s ease;
+}
+
+.hud-panel--compact {
+  border-radius: 10px;
+  padding: 0.5rem 0.75rem;
+}
+
+/* Faint cyan accent line along top edge */
+.hud-panel::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 10%;
+  right: 10%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(89, 214, 226, 0.5), transparent);
+  border-radius: 0 0 50% 50%;
+}
+
+/* ─────────────────────────────────────────────
+   Slide-in / slide-out enter animations
+───────────────────────────────────────────── */
+@keyframes hud-slide-left {
+  from { opacity: 0; transform: translateX(18px) scale(0.97); }
+  to   { opacity: 1; transform: translateX(0) scale(1); }
+}
+
+@keyframes hud-slide-right {
+  from { opacity: 0; transform: translateX(-18px) scale(0.97); }
+  to   { opacity: 1; transform: translateX(0) scale(1); }
+}
+
+@keyframes hud-slide-up {
+  from { opacity: 0; transform: translateY(14px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes hud-slide-down {
+  from { opacity: 0; transform: translateY(-10px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes hud-fade-in {
+  from { opacity: 0; transform: scale(0.96); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+.hud-enter-left  { animation: hud-slide-left  0.32s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+.hud-enter-right { animation: hud-slide-right 0.32s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+.hud-enter-up    { animation: hud-slide-up    0.28s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+.hud-enter-down  { animation: hud-slide-down  0.28s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+.hud-enter-fade  { animation: hud-fade-in     0.25s ease both; }
+
+/* ─────────────────────────────────────────────
+   HUD Button
+───────────────────────────────────────────── */
+.hud-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.75rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  border-radius: 8px;
+  border: 1px solid rgba(89, 214, 226, 0.18);
+  background: rgba(89, 214, 226, 0.08);
+  color: #59d6e2;
+  cursor: pointer;
+  transition:
+    background 0.18s ease,
+    border-color 0.18s ease,
+    color 0.18s ease,
+    box-shadow 0.18s ease,
+    transform 0.12s ease;
+  white-space: nowrap;
+  user-select: none;
+}
+
+.hud-btn:hover {
+  background: rgba(89, 214, 226, 0.18);
+  border-color: rgba(89, 214, 226, 0.45);
+  box-shadow: 0 0 14px rgba(89, 214, 226, 0.18);
+  transform: translateY(-1px);
+}
+
+.hud-btn:active {
+  transform: scale(0.96);
+}
+
+.hud-btn--active {
+  background: rgba(89, 214, 226, 0.22);
+  border-color: rgba(89, 214, 226, 0.55);
+  color: #7de8f2;
+  box-shadow: 0 0 16px rgba(89, 214, 226, 0.22);
+}
+
+.hud-btn--violet {
+  border-color: rgba(170, 160, 237, 0.22);
+  background: rgba(170, 160, 237, 0.09);
+  color: #aaa0ed;
+}
+
+.hud-btn--violet:hover {
+  background: rgba(170, 160, 237, 0.2);
+  border-color: rgba(170, 160, 237, 0.48);
+  box-shadow: 0 0 14px rgba(139, 92, 246, 0.22);
+}
+
+.hud-btn--ghost {
+  border-color: rgba(138, 154, 174, 0.18);
+  background: transparent;
+  color: #8a9aae;
+  padding: 0.35rem;
+  border-radius: 8px;
+}
+
+.hud-btn--ghost:hover {
+  background: rgba(89, 214, 226, 0.08);
+  border-color: rgba(89, 214, 226, 0.25);
+  color: #59d6e2;
+  box-shadow: none;
+  transform: none;
+}
+
+/* ─────────────────────────────────────────────
+   Mono badge / data chips
+───────────────────────────────────────────── */
+.hud-mono {
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: 0.68rem;
+  letter-spacing: 0.04em;
+}
+
+.hud-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.2rem 0.55rem;
+  border-radius: 6px;
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.hud-badge--cyan {
+  background: rgba(89, 214, 226, 0.14);
+  color: #59d6e2;
+  border: 1px solid rgba(89, 214, 226, 0.25);
+}
+
+.hud-badge--violet {
+  background: rgba(170, 160, 237, 0.14);
+  color: #aaa0ed;
+  border: 1px solid rgba(170, 160, 237, 0.25);
+}
+
+.hud-badge--amber {
+  background: rgba(223, 177, 111, 0.14);
+  color: #dfb16f;
+  border: 1px solid rgba(223, 177, 111, 0.25);
+}
+
+/* ─────────────────────────────────────────────
+   Status dot
+───────────────────────────────────────────── */
+@keyframes hud-ping {
+  75%, 100% { transform: scale(1.8); opacity: 0; }
+}
+
+.hud-dot {
+  position: relative;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.hud-dot--cyan  { background: #59d6e2; box-shadow: 0 0 6px #59d6e2; }
+.hud-dot--green { background: #34d399; box-shadow: 0 0 6px #34d399; }
+.hud-dot--amber { background: #dfb16f; box-shadow: 0 0 6px #dfb16f; }
+
+.hud-dot::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: inherit;
+  opacity: 0.6;
+  animation: hud-ping 2s ease infinite;
+}
+
+/* ─────────────────────────────────────────────
+   Separator line
+───────────────────────────────────────────── */
+.hud-divider {
+  width: 100%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(89, 214, 226, 0.18), transparent);
+  margin: 0.6rem 0;
+}
+
+/* ─────────────────────────────────────────────
+   Search input
+───────────────────────────────────────────── */
+.hud-search-input {
+  width: 100%;
+  background: rgba(7, 11, 20, 0.5);
+  border: 1px solid rgba(89, 214, 226, 0.18);
+  border-radius: 8px;
+  padding: 0.45rem 0.75rem 0.45rem 2rem;
+  font-size: 0.78rem;
+  color: #e5edf6;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  font-family: inherit;
+}
+
+.hud-search-input::placeholder {
+  color: #4a6070;
+}
+
+.hud-search-input:focus {
+  border-color: rgba(89, 214, 226, 0.45);
+  box-shadow: 0 0 0 3px rgba(89, 214, 226, 0.1), inset 0 0 10px rgba(89, 214, 226, 0.04);
+}
+
+/* ─────────────────────────────────────────────
+   Search results list
+───────────────────────────────────────────── */
+.hud-search-result {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.5rem 0.7rem;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.14s ease;
+  border: 1px solid transparent;
+}
+
+.hud-search-result:hover,
+.hud-search-result--active {
+  background: rgba(89, 214, 226, 0.08);
+  border-color: rgba(89, 214, 226, 0.16);
+}
+
+/* ─────────────────────────────────────────────
+   Object info panel rows
+───────────────────────────────────────────── */
+.hud-info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.5rem;
+  padding: 0.35rem 0;
+  border-bottom: 1px solid rgba(89, 214, 226, 0.06);
+}
+
+.hud-info-row:last-child {
+  border-bottom: none;
+}
+
+.hud-info-label {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #4a6070;
+  flex-shrink: 0;
+}
+
+.hud-info-value {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.72rem;
+  color: #59d6e2;
+  text-align: right;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ─────────────────────────────────────────────
+   Object label (follows 3D canvas position)
+───────────────────────────────────────────── */
+.hud-label {
+  position: absolute;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  white-space: nowrap;
+  transition:
+    opacity 0.25s ease,
+    transform 0.25s ease;
+}
+
+.hud-label__line {
+  width: 20px;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(89, 214, 226, 0.8), transparent);
+}
+
+.hud-label__text {
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: #7de8f2;
+  text-shadow: 0 0 8px rgba(89, 214, 226, 0.6);
+  background: rgba(7, 11, 20, 0.65);
+  padding: 0.15rem 0.45rem;
+  border-radius: 4px;
+  border: 1px solid rgba(89, 214, 226, 0.22);
+}
+
+/* ─────────────────────────────────────────────
+   Loading overlay
+───────────────────────────────────────────── */
+@keyframes hud-spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes hud-orbit {
+  to { transform: rotate(360deg); }
+}
+
+.hud-spinner {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 2px solid rgba(89, 214, 226, 0.15);
+  border-top-color: #59d6e2;
+  animation: hud-spin 0.85s linear infinite;
+}
+
+/* ─────────────────────────────────────────────
+   Coordinate / telemetry readout
+───────────────────────────────────────────── */
+.hud-coords {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  font-family: var(--font-mono, monospace);
+  font-size: 0.65rem;
+  color: rgba(89, 214, 226, 0.6);
+  letter-spacing: 0.05em;
+}
+
+.hud-coords span {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+}
+
+.hud-coords em {
+  font-style: normal;
+  color: rgba(89, 214, 226, 0.35);
+  min-width: 24px;
+}
+
+/* ─────────────────────────────────────────────
+   Scroll area within panels
+───────────────────────────────────────────── */
+.hud-scroll {
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(89, 214, 226, 0.15) transparent;
+}
+
+.hud-scroll::-webkit-scrollbar { width: 4px; }
+.hud-scroll::-webkit-scrollbar-track { background: transparent; }
+.hud-scroll::-webkit-scrollbar-thumb {
+  background: rgba(89, 214, 226, 0.18);
+  border-radius: 4px;
+}
+
+/* ─────────────────────────────────────────────
+   Full-screen explorer container
+───────────────────────────────────────────── */
+.hud-explorer {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+/* HUD layer sits above the canvas but passes events through */
+.hud-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 10;
+}
+
+/* Re-enable pointer events only for interactive HUD elements */
+.hud-interactive {
+  pointer-events: auto;
+}
+
+/* ─────────────────────────────────────────────
+   Transition utility: panel exit
+───────────────────────────────────────────── */
+@keyframes hud-exit-right {
+  from { opacity: 1; transform: translateX(0); }
+  to   { opacity: 0; transform: translateX(24px); }
+}
+
+.hud-exit-right {
+  animation: hud-exit-right 0.22s ease forwards;
+}
