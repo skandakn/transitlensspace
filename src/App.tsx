@@ -173,7 +173,7 @@ function DiscoveryWorkspace({
           </div>
           <div className="flex items-start gap-2">
             <span className="w-5 h-5 rounded-full bg-cyan-950 border border-cyan-500/40 text-cyan-300 flex items-center justify-center text-[10px] font-bold shrink-0">2</span>
-            <span className="text-slate-300"><strong className="text-white">Analyze Star:</strong> Click "Analyze Star" to run browser-side BLS detection.</span>
+            <span className="text-slate-300"><strong className="text-white">Analyze Star:</strong> Click "Analyze Star" to run BLS analysis on the selected observation.</span>
           </div>
           <div className="flex items-start gap-2">
             <span className="w-5 h-5 rounded-full bg-cyan-950 border border-cyan-500/40 text-cyan-300 flex items-center justify-center text-[10px] font-bold shrink-0">3</span>
