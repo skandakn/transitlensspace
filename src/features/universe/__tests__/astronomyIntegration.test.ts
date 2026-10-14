@@ -5,7 +5,6 @@ import {
   RETRIEVAL_DATE,
   searchCelestialCatalog
 } from '../../../data/astronomyData'
-import type { CelestialObject, CelestialPlanet } from '../../../types/universe'
 
 describe('Astronomy Data & Integration Suite (Member 4 Integration Engineer)', () => {
   describe('1. Reputable Astronomical Sources & Data Provenance', () => {
