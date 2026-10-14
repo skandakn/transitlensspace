@@ -19,6 +19,7 @@ import { ObjectInfoPanel } from './ObjectInfoPanel'
 import { NavigationControls, type NavControlState } from './NavigationControls'
 import { CoordinateDisplay } from './CoordinateDisplay'
 import { ObjectLabel } from './ObjectLabel'
+import { VisionHUD, type HandTrackingState, type HeadOrientation } from '../vision'
 import type { ExplorerMode } from './types'
 import type { StarObservation } from '../../types'
 import './hud.css'
@@ -44,6 +45,7 @@ export interface ExplorerHUDProps {
   navState: NavControlState
   /** Navigation control toggle handlers */
   onToggleOrbits: () => void
+  /** Toggle info panel open / close */
   onToggleLabels: () => void
   onToggleMotion: () => void
   onToggleQuality: () => void
@@ -53,6 +55,14 @@ export interface ExplorerHUDProps {
   onToggleInfoPanel: (open: boolean) => void
   /** Total count of systems in the 3D scene */
   systemCount?: number
+  /** Consumed tracking state from Member 1 */
+  handTracking?: HandTrackingState
+  /** Callback for subtle head-orientation camera adjustment */
+  onHeadOrient?: (orientation: HeadOrientation) => void
+  /** Callback when user pinches to select a target */
+  onPinchSelect?: () => void
+  /** Callback when user rotates navigation with open hand */
+  onHandNavigate?: (deltaX: number, deltaY: number) => void
   /** Custom class name */
   className?: string
 }
@@ -74,6 +84,10 @@ export function ExplorerHUD({
   infoPanelOpen,
   onToggleInfoPanel,
   systemCount,
+  handTracking,
+  onHeadOrient,
+  onPinchSelect,
+  onHandNavigate,
   className = '',
 }: ExplorerHUDProps) {
   const showInfoPanel =
@@ -86,6 +100,15 @@ export function ExplorerHUD({
       aria-label="TransitLens Universe HUD"
       id="transitlens-explorer-hud"
     >
+      {/* COCKPIT VISION & GESTURE CONTROL HUD */}
+      <VisionHUD
+        handTracking={handTracking}
+        navigationMode={mode}
+        hasSelectedTarget={Boolean(selectedStar && selectedStar.id !== '—')}
+        onPinchSelect={onPinchSelect}
+        onHandNavigate={onHandNavigate}
+        onHeadOrient={onHeadOrient}
+      />
       {/* TOP-LEFT: Compact Brand Logo + Exploration Mode Selector */}
       <div style={{ position: 'absolute', top: 16, left: 16 }}>
         <HudTopBar mode={mode} onModeChange={onModeChange} />
