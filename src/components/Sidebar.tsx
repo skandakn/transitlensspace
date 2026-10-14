@@ -242,7 +242,7 @@ export function Sidebar({
                     }}
                     className={cn(
                       'w-full flex items-center rounded-xl text-left transition-all duration-200 relative cursor-pointer',
-                      isCollapsed ? 'justify-center p-2.5' : 'px-3 py-2.5 gap-2.5',
+                      isCollapsed ? 'justify-center p-2' : 'px-2.5 py-2 gap-2.5',
                       isActive
                         ? 'bg-gradient-to-r from-blue-950/70 via-violet-950/60 to-cyan-950/50 text-white border border-cyan-400/70 shadow-[0_0_18px_rgba(6,182,212,0.3),inset_0_0_14px_rgba(6,182,212,0.2)] backdrop-blur-md'
                         : 'text-slate-300 hover:text-white hover:bg-violet-950/30 hover:border-violet-500/35 border border-transparent hover:shadow-[0_0_14px_rgba(139,92,246,0.15)]'
@@ -252,7 +252,7 @@ export function Sidebar({
                   >
                     {/* Glowing electric cyan pill indicator on left edge for active item */}
                     {isActive && (
-                      <span className="absolute left-0 top-2 bottom-2 w-1.5 bg-gradient-to-b from-cyan-400 via-cyan-300 to-cyan-500 rounded-r-full shadow-[0_0_12px_#22d3ee]" />
+                      <span className="absolute left-0 top-1.5 bottom-1.5 w-1.5 bg-gradient-to-b from-cyan-400 via-cyan-300 to-cyan-500 rounded-r-full shadow-[0_0_12px_#22d3ee]" />
                     )}
 
                     {/* Icon container */}
@@ -340,17 +340,17 @@ export function Sidebar({
             4. BOTTOM STATUS PANEL & COLLAPSE CONTROL
             Exact match to Option 2 reference: WebGL Renderer, Camera, Analysis, Data Cache
             ========================================================================= */}
-        <div className="p-2.5 border-t border-violet-500/25 bg-[#060913]/70 backdrop-blur-md relative z-10 space-y-2 flex-shrink-0">
+        <div className="p-2 border-t border-violet-500/25 bg-[#060913]/70 backdrop-blur-md relative z-10 space-y-1.5 flex-shrink-0">
           {/* Expanded bottom telemetry card matching Option 2 reference */}
           {!isCollapsed && (
-            <div className="p-2.5 rounded-xl bg-slate-950/60 backdrop-blur-md border border-violet-500/30 space-y-1.5 text-xs shadow-[0_4px_20px_rgba(0,0,0,0.5)]">
+            <div className="p-2 rounded-xl bg-slate-950/60 backdrop-blur-md border border-violet-500/30 space-y-1 text-xs shadow-[0_4px_20px_rgba(0,0,0,0.5)]">
               {/* WebGL Renderer */}
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-slate-300">
-                  <span className={cn('w-2 h-2 rounded-full', webGLActive ? 'bg-emerald-400 shadow-[0_0_8px_#34d399]' : 'bg-amber-400')} />
-                  <span className="text-[11px] font-medium">WebGL Renderer</span>
+                <div className="flex items-center gap-1.5 text-slate-300">
+                  <span className={cn('w-1.5 h-1.5 rounded-full', webGLActive ? 'bg-emerald-400 shadow-[0_0_8px_#34d399]' : 'bg-amber-400')} />
+                  <span className="text-[10.5px] font-medium">WebGL Renderer</span>
                 </div>
-                <div className="flex items-center gap-1.5 text-emerald-400 font-mono text-[10px]">
+                <div className="flex items-center gap-1 text-emerald-400 font-mono text-[9.5px]">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
                   <span>{webGLActive ? 'Active' : 'Fallback'}</span>
                 </div>
@@ -358,11 +358,11 @@ export function Sidebar({
 
               {/* Camera (Gestures) */}
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-slate-300">
-                  <span className={cn('w-2 h-2 rounded-full', hasCamera ? 'bg-cyan-400 shadow-[0_0_6px_#22d3ee]' : 'bg-slate-500')} />
-                  <span className="text-[11px] font-medium">Camera (Gestures)</span>
+                <div className="flex items-center gap-1.5 text-slate-300">
+                  <span className={cn('w-1.5 h-1.5 rounded-full', hasCamera ? 'bg-cyan-400 shadow-[0_0_6px_#22d3ee]' : 'bg-slate-500')} />
+                  <span className="text-[10.5px] font-medium">Camera (Gestures)</span>
                 </div>
-                <div className={cn('flex items-center gap-1.5 font-mono text-[10px]', hasCamera ? 'text-cyan-400' : 'text-slate-400')}>
+                <div className={cn('flex items-center gap-1 font-mono text-[9.5px]', hasCamera ? 'text-cyan-400' : 'text-slate-400')}>
                   <span className={cn('w-1.5 h-1.5 rounded-full', hasCamera ? 'bg-cyan-400' : 'bg-slate-500')} />
                   <span>{hasCamera ? 'Ready' : 'Disconnected'}</span>
                 </div>
@@ -370,11 +370,11 @@ export function Sidebar({
 
               {/* Analysis Service */}
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-slate-300">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_#34d399]" />
-                  <span className="text-[11px] font-medium">Analysis Service</span>
+                <div className="flex items-center gap-1.5 text-slate-300">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_#34d399]" />
+                  <span className="text-[10.5px] font-medium">Analysis Service</span>
                 </div>
-                <div className="flex items-center gap-1.5 text-emerald-400 font-mono text-[10px]">
+                <div className="flex items-center gap-1 text-emerald-400 font-mono text-[9.5px]">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
                   <span>Online</span>
                 </div>
@@ -382,11 +382,11 @@ export function Sidebar({
 
               {/* Data Cache */}
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-slate-300">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_#34d399]" />
-                  <span className="text-[11px] font-medium">Data Cache</span>
+                <div className="flex items-center gap-1.5 text-slate-300">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_#34d399]" />
+                  <span className="text-[10.5px] font-medium">Data Cache</span>
                 </div>
-                <div className="flex items-center gap-1.5 text-emerald-400 font-mono text-[10px]">
+                <div className="flex items-center gap-1 text-emerald-400 font-mono text-[9.5px]">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
                   <span>Ready</span>
                 </div>
@@ -417,7 +417,7 @@ export function Sidebar({
               data-testid={isCollapsed ? 'expand-sidebar-btn' : 'collapse-sidebar-btn'}
               onClick={onToggleCollapse}
               className={cn(
-                'w-full flex items-center justify-center py-2 rounded-xl bg-slate-900/70 hover:bg-slate-800/90 border border-slate-700/60 hover:border-cyan-500/50 text-slate-300 hover:text-white transition-all cursor-pointer shadow-sm group',
+                'w-full flex items-center justify-center py-1.5 rounded-xl bg-slate-900/70 hover:bg-slate-800/90 border border-slate-700/60 hover:border-cyan-500/50 text-slate-300 hover:text-white transition-all cursor-pointer shadow-sm group',
                 isCollapsed ? 'px-2' : 'gap-2 px-3'
               )}
               title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
@@ -436,7 +436,7 @@ export function Sidebar({
 
           {/* GitHub Link & License */}
           {!isCollapsed && (
-            <div className="flex items-center justify-between px-1 text-[10px] text-slate-400 font-mono">
+            <div className="flex items-center justify-between px-1 text-[9px] text-slate-400 font-mono">
               <a
                 href="https://github.com/skandakn/TransitLens"
                 target="_blank"
