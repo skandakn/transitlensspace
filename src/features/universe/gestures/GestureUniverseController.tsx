@@ -333,8 +333,11 @@ export function GestureUniverseController({
 
     // ── MODE C: SELECT (Planet Raycast & Pinch Selection) ──
     else if (mode === 'select') {
-      const indexTip = primaryHand.indexTip
-      const hitTarget = findTargetFromFingertip(indexTip, celestialObjects, camera)
+      const screenFingertip = {
+        x: 1 - primaryHand.indexTip.x,
+        y: primaryHand.indexTip.y
+      }
+      const hitTarget = findTargetFromFingertip(screenFingertip, celestialObjects, camera)
 
       if (hitTarget) {
         if (hoveredTargetRef.current?.id === hitTarget.id) {

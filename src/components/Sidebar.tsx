@@ -13,6 +13,7 @@ import {
   X
 } from 'lucide-react'
 import { GithubIcon } from './icons/GithubIcon'
+import { CosmicRadarWidget, MiniCosmicRadarOrb } from './CosmicRadarWidget'
 import type { NavigationTab } from '../types'
 import { cn } from '../lib/utils'
 
@@ -214,9 +215,9 @@ export function Sidebar({
         </div>
 
         {/* =========================================================================
-            3. WORKSPACES NAVIGATION: Option 2 Neon Glass
+            3. WORKSPACES NAVIGATION & ANIMATED COSMIC OBSERVATORY
             ========================================================================= */}
-        <div className="flex-1 py-2 px-2.5 space-y-1 overflow-y-auto overflow-x-hidden z-10">
+        <div className="flex-1 min-h-0 py-2 px-2.5 flex flex-col overflow-y-auto overflow-x-hidden z-10 custom-scrollbar">
           {/* Workspaces category header (matching reference) */}
           {!isCollapsed && (
             <div className="px-3 pt-1 pb-1.5 text-[10px] font-semibold uppercase tracking-widest text-slate-400/90 flex items-center justify-between">
@@ -224,106 +225,115 @@ export function Sidebar({
             </div>
           )}
 
-          {navItems.map((item) => {
-            const Icon = item.icon
-            const isActive = activeTab === item.id
+          <div className="space-y-1">
+            {navItems.map((item) => {
+              const Icon = item.icon
+              const isActive = activeTab === item.id
 
-            return (
-              <div key={item.id} className="relative group/nav">
-                <button
-                  type="button"
-                  id={`nav-item-${item.id}`}
-                  data-testid={`nav-item-${item.id}`}
-                  onClick={() => {
-                    onSelectTab(item.id)
-                    if (onCloseMobile) onCloseMobile()
-                  }}
-                  className={cn(
-                    'w-full flex items-center rounded-xl text-left transition-all duration-200 relative cursor-pointer',
-                    isCollapsed ? 'justify-center p-2.5' : 'px-3 py-2.5 gap-2.5',
-                    isActive
-                      ? 'bg-gradient-to-r from-blue-950/70 via-violet-950/60 to-cyan-950/50 text-white border border-cyan-400/70 shadow-[0_0_18px_rgba(6,182,212,0.3),inset_0_0_14px_rgba(6,182,212,0.2)] backdrop-blur-md'
-                      : 'text-slate-300 hover:text-white hover:bg-violet-950/30 hover:border-violet-500/35 border border-transparent hover:shadow-[0_0_14px_rgba(139,92,246,0.15)]'
-                  )}
-                  title={isCollapsed ? `${item.label} — ${item.subtitle}` : undefined}
-                  aria-label={item.label}
-                >
-                  {/* Glowing electric cyan pill indicator on left edge for active item */}
-                  {isActive && (
-                    <span className="absolute left-0 top-2 bottom-2 w-1.5 bg-gradient-to-b from-cyan-400 via-cyan-300 to-cyan-500 rounded-r-full shadow-[0_0_12px_#22d3ee]" />
-                  )}
-
-                  {/* Icon container */}
-                  <div
+              return (
+                <div key={item.id} className="relative group/nav">
+                  <button
+                    type="button"
+                    id={`nav-item-${item.id}`}
+                    data-testid={`nav-item-${item.id}`}
+                    onClick={() => {
+                      onSelectTab(item.id)
+                      if (onCloseMobile) onCloseMobile()
+                    }}
                     className={cn(
-                      'p-1.5 rounded-lg transition-all duration-200 flex-shrink-0',
+                      'w-full flex items-center rounded-xl text-left transition-all duration-200 relative cursor-pointer',
+                      isCollapsed ? 'justify-center p-2.5' : 'px-3 py-2.5 gap-2.5',
                       isActive
-                        ? 'text-cyan-300 bg-cyan-950/80 border border-cyan-500/50 shadow-[0_0_10px_rgba(6,182,212,0.35)]'
-                        : 'text-slate-400 group-hover/nav:text-cyan-300 group-hover/nav:bg-slate-800/60 border border-transparent'
+                        ? 'bg-gradient-to-r from-blue-950/70 via-violet-950/60 to-cyan-950/50 text-white border border-cyan-400/70 shadow-[0_0_18px_rgba(6,182,212,0.3),inset_0_0_14px_rgba(6,182,212,0.2)] backdrop-blur-md'
+                        : 'text-slate-300 hover:text-white hover:bg-violet-950/30 hover:border-violet-500/35 border border-transparent hover:shadow-[0_0_14px_rgba(139,92,246,0.15)]'
                     )}
+                    title={isCollapsed ? `${item.label} — ${item.subtitle}` : undefined}
+                    aria-label={item.label}
                   >
-                    <Icon className="w-4 h-4" />
-                  </div>
+                    {/* Glowing electric cyan pill indicator on left edge for active item */}
+                    {isActive && (
+                      <span className="absolute left-0 top-2 bottom-2 w-1.5 bg-gradient-to-b from-cyan-400 via-cyan-300 to-cyan-500 rounded-r-full shadow-[0_0_12px_#22d3ee]" />
+                    )}
 
-                  {/* Title & Subtitle */}
-                  {!isCollapsed && (
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between gap-1.5">
-                        <span className={cn(
-                          'text-xs font-semibold whitespace-nowrap',
-                          isActive ? 'text-white' : 'text-slate-200 group-hover/nav:text-white'
-                        )}>
-                          {item.label}
+                    {/* Icon container */}
+                    <div
+                      className={cn(
+                        'p-1.5 rounded-lg transition-all duration-200 flex-shrink-0',
+                        isActive
+                          ? 'text-cyan-300 bg-cyan-950/80 border border-cyan-500/50 shadow-[0_0_10px_rgba(6,182,212,0.35)]'
+                          : 'text-slate-400 group-hover/nav:text-cyan-300 group-hover/nav:bg-slate-800/60 border border-transparent'
+                      )}
+                    >
+                      <Icon className="w-4 h-4" />
+                    </div>
+
+                    {/* Title & Subtitle */}
+                    {!isCollapsed && (
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-1.5">
+                          <span className={cn(
+                            'text-xs font-semibold whitespace-nowrap',
+                            isActive ? 'text-white' : 'text-slate-200 group-hover/nav:text-white'
+                          )}>
+                            {item.label}
+                          </span>
+                          {item.badge && (
+                            <span
+                              className={cn(
+                                'text-[9px] px-1.5 py-0.2 rounded-md font-mono font-medium border tracking-tight shrink-0',
+                                isActive
+                                  ? 'bg-cyan-500/25 text-cyan-200 border-cyan-400/50 shadow-[0_0_10px_rgba(6,182,212,0.3)]'
+                                  : 'bg-slate-900/80 text-slate-400 border-slate-800 group-hover/nav:border-slate-700'
+                              )}
+                            >
+                              {item.badge}
+                            </span>
+                          )}
+                        </div>
+                        <span className="text-[10px] text-slate-400 truncate block mt-0.5 group-hover/nav:text-slate-300">
+                          {item.subtitle}
                         </span>
+                      </div>
+                    )}
+
+                    {/* Cyan Chevron Right on active/hover item */}
+                    {!isCollapsed && (
+                      <ChevronRight
+                        className={cn(
+                          'w-3.5 h-3.5 transition-all flex-shrink-0',
+                          isActive
+                            ? 'opacity-100 text-cyan-400 drop-shadow-[0_0_6px_rgba(34,211,238,0.7)] translate-x-0.5'
+                            : 'opacity-0 group-hover/nav:opacity-80 group-hover/nav:text-slate-400'
+                        )}
+                      />
+                    )}
+                  </button>
+
+                  {/* Collapsed floating tooltip on desktop hover */}
+                  {isCollapsed && (
+                    <div className="hidden lg:group-hover/nav:flex absolute left-full ml-3 top-1/2 -translate-y-1/2 z-50 px-3 py-2 rounded-xl bg-[#090e1a]/95 border border-cyan-500/40 shadow-[0_6px_20px_rgba(0,0,0,0.7)] backdrop-blur-md pointer-events-none flex-col min-w-[180px]">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-xs font-semibold text-white whitespace-nowrap">{item.label}</span>
                         {item.badge && (
-                          <span
-                            className={cn(
-                              'text-[9px] px-1.5 py-0.2 rounded-md font-mono font-medium border tracking-tight shrink-0',
-                              isActive
-                                ? 'bg-cyan-500/25 text-cyan-200 border-cyan-400/50 shadow-[0_0_10px_rgba(6,182,212,0.3)]'
-                                : 'bg-slate-900/80 text-slate-400 border-slate-800 group-hover/nav:border-slate-700'
-                            )}
-                          >
+                          <span className="text-[9px] px-1.5 py-0.2 rounded font-mono bg-cyan-500/25 text-cyan-300 border border-cyan-500/30 shrink-0">
                             {item.badge}
                           </span>
                         )}
                       </div>
-                      <span className="text-[10px] text-slate-400 truncate block mt-0.5 group-hover/nav:text-slate-300">
-                        {item.subtitle}
-                      </span>
+                      <span className="text-[10px] text-slate-400 font-mono mt-0.5 whitespace-nowrap">{item.subtitle}</span>
                     </div>
                   )}
+                </div>
+              )
+            })}
+          </div>
 
-                  {/* Cyan Chevron Right on active/hover item */}
-                  {!isCollapsed && (
-                    <ChevronRight
-                      className={cn(
-                        'w-3.5 h-3.5 transition-all flex-shrink-0',
-                        isActive
-                          ? 'opacity-100 text-cyan-400 drop-shadow-[0_0_6px_rgba(34,211,238,0.7)] translate-x-0.5'
-                          : 'opacity-0 group-hover/nav:opacity-80 group-hover/nav:text-slate-400'
-                      )}
-                    />
-                  )}
-                </button>
-
-                {/* Collapsed floating tooltip on desktop hover */}
-                {isCollapsed && (
-                  <div className="hidden lg:group-hover/nav:flex absolute left-full ml-3 top-1/2 -translate-y-1/2 z-50 px-3 py-2 rounded-xl bg-[#090e1a]/95 border border-cyan-500/40 shadow-[0_6px_20px_rgba(0,0,0,0.7)] backdrop-blur-md pointer-events-none flex-col min-w-[180px]">
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="text-xs font-semibold text-white whitespace-nowrap">{item.label}</span>
-                      {item.badge && (
-                        <span className="text-[9px] px-1.5 py-0.2 rounded font-mono bg-cyan-500/25 text-cyan-300 border border-cyan-500/30 shrink-0">
-                          {item.badge}
-                        </span>
-                      )}
-                    </div>
-                    <span className="text-[10px] text-slate-400 font-mono mt-0.5 whitespace-nowrap">{item.subtitle}</span>
-                  </div>
-                )}
-              </div>
-            )
-          })}
+          {/* Animated Cosmic Observatory filling the empty vertical space */}
+          {isCollapsed ? (
+            <MiniCosmicRadarOrb />
+          ) : (
+            <CosmicRadarWidget />
+          )}
         </div>
 
         {/* =========================================================================

@@ -6,7 +6,7 @@
  * spectral badges, distance telemetry, and target lock controls.
  */
 import React from 'react'
-import { Crosshair, ChevronRight, X } from 'lucide-react'
+import { Crosshair, ChevronLeft, ChevronRight, X } from 'lucide-react'
 import type { StarObservation } from '../../types'
 import './hud.css'
 
@@ -17,11 +17,22 @@ export interface ObjectLabelProps {
   onInspect?: () => void
   /** Optional callback to deselect or return to wide universe view */
   onDeselect?: () => void
+  /** Optional callback to select previous system */
+  onPrev?: () => void
+  /** Optional callback to select next system */
+  onNext?: () => void
   /** Additional custom class */
   className?: string
 }
 
-export function ObjectLabel({ star, onInspect, onDeselect, className = '' }: ObjectLabelProps) {
+export function ObjectLabel({
+  star,
+  onInspect,
+  onDeselect,
+  onPrev,
+  onNext,
+  className = ''
+}: ObjectLabelProps) {
   if (!star || star.id === '—') return null
 
   const spectralColor = (type?: string) => {
@@ -134,6 +145,32 @@ export function ObjectLabel({ star, onInspect, onDeselect, className = '' }: Obj
         </div>
       </div>
 
+      {/* Step previous system */}
+      {onPrev && (
+        <button
+          onClick={onPrev}
+          className="hud-btn hud-btn--ghost"
+          style={{ padding: '0.25rem 0.35rem', fontSize: '0.68rem', gap: '0.1rem' }}
+          title="Previous celestial system"
+          aria-label="Previous celestial system"
+        >
+          <ChevronLeft size={13} />
+        </button>
+      )}
+
+      {/* Step next system */}
+      {onNext && (
+        <button
+          onClick={onNext}
+          className="hud-btn hud-btn--ghost"
+          style={{ padding: '0.25rem 0.35rem', fontSize: '0.68rem', gap: '0.1rem' }}
+          title="Next celestial system"
+          aria-label="Next celestial system"
+        >
+          <ChevronRight size={13} />
+        </button>
+      )}
+
       {/* Inspect button */}
       {onInspect && (
         <button
@@ -143,7 +180,6 @@ export function ObjectLabel({ star, onInspect, onDeselect, className = '' }: Obj
           title="Inspect object telemetry"
         >
           <span>Details</span>
-          <ChevronRight size={12} />
         </button>
       )}
 

@@ -129,6 +129,20 @@ export function ExplorerHUD({
   const pointerY = primaryHand ? `${(primaryHand.indexTip.y * 100).toFixed(1)}%` : '50%'
   const isPinching = primaryHand?.isPinching ?? false
 
+  const currentIndex = selectedStar ? stars.findIndex((s) => s.id === selectedStar.id) : -1
+  const handlePrevStar = () => {
+    if (stars.length === 0) return
+    const idx = currentIndex <= 0 ? stars.length - 1 : currentIndex - 1
+    onSelectStar(stars[idx])
+    onToggleInfoPanel(true)
+  }
+  const handleNextStar = () => {
+    if (stars.length === 0) return
+    const idx = currentIndex < 0 || currentIndex >= stars.length - 1 ? 0 : currentIndex + 1
+    onSelectStar(stars[idx])
+    onToggleInfoPanel(true)
+  }
+
   return (
     <div
       className={`hud-layer ${className}`}
@@ -210,6 +224,8 @@ export function ExplorerHUD({
             star={selectedStar}
             onInspect={() => onToggleInfoPanel(true)}
             onDeselect={onReturnToUniverse}
+            onPrev={handlePrevStar}
+            onNext={handleNextStar}
           />
         </div>
       )}
@@ -260,6 +276,48 @@ export function ExplorerHUD({
           onToggleMotion={onToggleMotion}
           onToggleQuality={onToggleQuality}
         />
+      </div>
+
+      {/* BOTTOM-CENTER: System Quick-Switcher Bar */}
+      <div
+        style={{
+          position: 'absolute',
+          bottom: 16,
+          left: '50%',
+          transform: 'translateX(-50%)',
+          zIndex: 20,
+        }}
+        className="hud-interactive pointer-events-auto flex items-center gap-1.5 p-1.5 rounded-2xl bg-[#070b14]/90 border border-slate-800 backdrop-blur-md shadow-2xl max-w-[calc(100vw-360px)] overflow-x-auto hud-scroll"
+        role="toolbar"
+        aria-label="Celestial Systems Quick Navigation"
+      >
+        <span className="text-[10px] font-mono text-cyan-300 uppercase tracking-wider px-2 shrink-0 hidden md:inline font-bold">
+          Systems:
+        </span>
+        {stars
+          .filter((s) => s.id !== '—')
+          .map((star) => {
+            const isSelected = selectedStar?.id === star.id
+            const displayName = star.name.replace(/\s*\(.*\)/, '')
+
+            return (
+              <button
+                key={star.id}
+                onClick={() => {
+                  onSelectStar(star)
+                  onToggleInfoPanel(true)
+                }}
+                className={`px-2.5 py-1 rounded-xl text-xs font-mono border transition-all cursor-pointer shrink-0 whitespace-nowrap ${
+                  isSelected
+                    ? 'bg-cyan-500 text-slate-950 font-bold border-cyan-400 shadow-[0_0_14px_rgba(6,182,212,0.45)] scale-105'
+                    : 'bg-[#090e1a]/85 text-slate-300 border-slate-800 hover:border-cyan-500/50 hover:text-white'
+                }`}
+                title={`Focus ${star.name}`}
+              >
+                {displayName}
+              </button>
+            )
+          })}
       </div>
 
       {/* BOTTOM-RIGHT: Astronomical Coordinate & Telemetry Status */}
