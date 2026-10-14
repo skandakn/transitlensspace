@@ -81,6 +81,18 @@ export interface ExplorerHUDProps {
   onPinchSelect?: () => void
   /** Callback when user rotates navigation with open hand */
   onHandNavigate?: (deltaX: number, deltaY: number) => void
+  /** Shared camera loading state */
+  isCameraLoading?: boolean
+  /** Shared camera error message */
+  cameraError?: string | null
+  /** Shared camera MediaStream */
+  cameraStream?: MediaStream | null
+  /** Shared video element ref */
+  videoRef?: React.RefObject<HTMLVideoElement | null>
+  /** Callback to start or enable camera */
+  onEnableCamera?: () => Promise<void> | void
+  /** Callback to stop or toggle camera */
+  onToggleCamera?: () => Promise<void> | void
   /** Custom class name */
   className?: string
 }
@@ -107,6 +119,12 @@ export function ExplorerHUD({
   onGestureModeChange,
   onOpenCalibration,
   isCameraActive,
+  isCameraLoading,
+  cameraError,
+  cameraStream,
+  videoRef,
+  onEnableCamera,
+  onToggleCamera,
   gestureFrame,
   hoveredGestureTarget,
   systemCount,
@@ -121,7 +139,8 @@ export function ExplorerHUD({
 
   const primaryHand = gestureFrame?.primaryHand
   const isHandTrackingActive = Boolean(gestureFrame?.isTracking && primaryHand)
-  const pointerX = primaryHand ? `${(primaryHand.indexTip.x * 100).toFixed(1)}%` : '50%'
+  // Invert X coordinate for mirrored screen-space overlay pointer
+  const pointerX = primaryHand ? `${((1 - primaryHand.indexTip.x) * 100).toFixed(1)}%` : '50%'
   const pointerY = primaryHand ? `${(primaryHand.indexTip.y * 100).toFixed(1)}%` : '50%'
   const isPinching = primaryHand?.isPinching ?? false
 
@@ -178,6 +197,13 @@ export function ExplorerHUD({
           onPinchSelect={onPinchSelect}
           onHandNavigate={onHandNavigate}
           onHeadOrient={onHeadOrient}
+          isCameraActive={isCameraActive}
+          isCameraLoading={isCameraLoading}
+          cameraError={cameraError}
+          stream={cameraStream}
+          videoRef={videoRef}
+          onEnableCamera={onEnableCamera}
+          onToggleCamera={onToggleCamera}
         />
       )}
 
@@ -192,6 +218,8 @@ export function ExplorerHUD({
           onGestureModeChange={onGestureModeChange}
           onOpenCalibration={onOpenCalibration}
           isCameraActive={isCameraActive}
+          isCameraLoading={isCameraLoading}
+          onToggleCamera={onToggleCamera}
         />
       </div>
 
@@ -200,7 +228,7 @@ export function ExplorerHUD({
         <div
           style={{
             position: 'absolute',
-            top: 16,
+            top: 68,
             left: '50%',
             transform: 'translateX(-50%)',
             zIndex: 15,

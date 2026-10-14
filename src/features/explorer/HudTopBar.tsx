@@ -1,4 +1,4 @@
-import { Telescope, Hand, Sliders, Compass, Target, Pause } from 'lucide-react'
+import { Telescope, Hand, Camera, Sliders, Compass, Target, Pause } from 'lucide-react'
 import type { ExplorerMode } from './types'
 import type { GestureNavigationMode } from '../universe/gestures/types'
 import './hud.css'
@@ -12,6 +12,8 @@ interface HudTopBarProps {
   onGestureModeChange?: (mode: GestureNavigationMode) => void
   onOpenCalibration?: () => void
   isCameraActive?: boolean
+  isCameraLoading?: boolean
+  onToggleCamera?: () => void
   className?: string
 }
 
@@ -24,6 +26,8 @@ export function HudTopBar({
   onGestureModeChange,
   onOpenCalibration,
   isCameraActive = false,
+  isCameraLoading = false,
+  onToggleCamera,
   className = '',
 }: HudTopBarProps) {
   return (
@@ -101,20 +105,42 @@ export function HudTopBar({
         </button>
       </div>
 
+      {/* Primary Webcam Camera Toggle */}
+      {(onToggleCamera || onToggleHandTracking) && (
+        <button
+          id="hud-toggle-camera"
+          className={`hud-btn flex items-center gap-1.5 ${
+            isCameraActive ? 'hud-btn--active border-emerald-500/60 text-emerald-300 font-semibold' : 'text-cyan-300'
+          }`}
+          onClick={() => {
+            if (onToggleCamera) {
+              onToggleCamera()
+            } else if (onToggleHandTracking) {
+              onToggleHandTracking()
+            }
+          }}
+          title={isCameraActive ? 'Turn Off Webcam Camera' : 'Turn On Webcam Camera & Gesture Tracking'}
+          aria-pressed={isCameraActive}
+        >
+          <Camera size={13} className={isCameraActive ? 'text-emerald-400' : 'text-cyan-400'} />
+          <span>{isCameraActive ? 'Camera On' : isCameraLoading ? 'Starting...' : 'Enable Camera'}</span>
+          {isCameraActive && (
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse ml-0.5" />
+          )}
+        </button>
+      )}
+
       {/* Hand Gesture Tracking Toggle */}
       {onToggleHandTracking && (
         <button
           id="hud-toggle-hand-tracking"
           className={`hud-btn flex items-center gap-1.5 ${showHandTracking ? 'hud-btn--active' : ''}`}
           onClick={onToggleHandTracking}
-          title="Toggle Webcam Hand Gesture Tracking (Member 1)"
+          title="Toggle Hand Skeleton HUD Window (Member 1)"
           aria-pressed={showHandTracking}
         >
           <Hand size={13} />
-          <span>Hand Tracking</span>
-          {isCameraActive && (
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse ml-0.5" />
-          )}
+          <span>Hand Skeleton</span>
         </button>
       )}
 

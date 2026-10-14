@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { Sidebar } from '../components/Sidebar'
 import { TopBar } from '../components/TopBar'
 import type { NavigationTab, StarObservation, AnalysisStatus } from '../types'
+import { cn } from '../lib/utils'
 
 export interface RootLayoutProps {
   children: React.ReactNode
@@ -31,6 +32,7 @@ export function RootLayout({
   canAnalyze = true
 }: RootLayoutProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
 
   return (
     <div className="min-h-screen bg-[#070b14] text-slate-100 flex flex-col font-sans selection:bg-cyan-500/30 selection:text-cyan-200">
@@ -55,10 +57,18 @@ export function RootLayout({
         onSelectTab={onSelectTab}
         isMobileOpen={mobileMenuOpen}
         onCloseMobile={() => setMobileMenuOpen(false)}
+        isCollapsed={isSidebarCollapsed}
+        onToggleCollapse={() => setIsSidebarCollapsed((prev) => !prev)}
       />
 
       {/* Main Content Area */}
-      <div className={`lg:pl-72 flex flex-col min-h-screen relative z-10 ${activeTab === 'universe' ? 'h-screen overflow-hidden' : ''}`}>
+      <div
+        className={cn(
+          'flex flex-col min-h-screen relative z-10 transition-all duration-300 ease-in-out',
+          isSidebarCollapsed ? 'lg:pl-20' : 'lg:pl-72',
+          activeTab === 'universe' ? 'h-screen overflow-hidden' : ''
+        )}
+      >
         {activeTab !== 'universe' && (
           <TopBar
             onToggleMobileMenu={() => setMobileMenuOpen(!mobileMenuOpen)}

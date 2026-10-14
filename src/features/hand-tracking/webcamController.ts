@@ -84,31 +84,44 @@ export async function startWebcam(
   }
 
   // Attach stream to video element
-  videoElement.srcObject = stream
-  videoElement.setAttribute('playsinline', 'true')
-  videoElement.muted = true
+  if (videoElement) {
+    videoElement.srcObject = stream
+    videoElement.setAttribute('playsinline', 'true')
+    videoElement.muted = true
+    videoElement.defaultMuted = true
+    videoElement.autoplay = true
 
-  // Ensure video element actually starts playing and produces frame data
-  await new Promise<void>((resolve, reject) => {
-    const handleLoadedData = () => {
-      videoElement.removeEventListener('loadeddata', handleLoadedData)
-      videoElement.removeEventListener('error', handleError)
-      videoElement.play().then(resolve).catch(reject)
+    try {
+      await videoElement.play()
+    } catch {
+      // Autoplay policy or already playing
     }
 
-    const handleError = () => {
-      videoElement.removeEventListener('loadeddata', handleLoadedData)
-      videoElement.removeEventListener('error', handleError)
-      reject(new CameraError('UNKNOWN', 'Failed to render webcam video stream.'))
-    }
+    // Wait for first frame or metadata, with 500ms fallback to prevent any deadlock
+    await new Promise<void>((resolve) => {
+      if (videoElement.readyState >= 1) {
+        resolve()
+        return
+      }
 
-    if (videoElement.readyState >= 2) {
-      videoElement.play().then(resolve).catch(reject)
-    } else {
-      videoElement.addEventListener('loadeddata', handleLoadedData)
-      videoElement.addEventListener('error', handleError)
-    }
-  })
+      let done = false
+      const onReady = () => {
+        if (done) return
+        done = true
+        videoElement.removeEventListener('loadedmetadata', onReady)
+        videoElement.removeEventListener('loadeddata', onReady)
+        videoElement.removeEventListener('canplay', onReady)
+        resolve()
+      }
+
+      videoElement.addEventListener('loadedmetadata', onReady, { once: true })
+      videoElement.addEventListener('loadeddata', onReady, { once: true })
+      videoElement.addEventListener('canplay', onReady, { once: true })
+
+      // Guaranteed resolution fallback
+      setTimeout(onReady, 500)
+    })
+  }
 
   return stream
 }

@@ -36,7 +36,7 @@ import {
 import type { NavControlState } from './NavigationControls'
 import type { ExplorerMode } from './types'
 import type { StarObservation, CelestialObject, CelestialPlanet } from '../../types'
-import type { HandTrackingState, HeadOrientation } from '../vision'
+import type { HandTrackingState, HeadOrientation, GestureType, Point3D } from '../vision'
 import './hud.css'
 
 export interface ExplorerViewProps {
@@ -63,7 +63,7 @@ export function ExplorerView({
   onNavigateToAnalysis,
   onReturnToUniverse,
   celestialObjects: customCelestialObjects,
-  handTracking,
+  handTracking: customHandTracking,
 }: ExplorerViewProps) {
   // ── Camera / display state ──
   const [mode, setMode] = useState<ExplorerMode>('orbit')
@@ -95,6 +95,42 @@ export function ExplorerView({
       setInfoPanelOpen(true)
     }
   })
+
+  // Adapt Member 1's GestureFrame into Member 3's HandTrackingState
+  const adaptedHandTracking: HandTrackingState = useMemo(() => {
+    if (customHandTracking) return customHandTracking
+
+    const primaryHand = tracking.frame.primaryHand
+    let gestureType: GestureType = 'none'
+    if (tracking.frame.gesture === 'open-palm') gestureType = 'open_palm'
+    else if (tracking.frame.gesture === 'closed-fist') gestureType = 'fist'
+    else if (tracking.frame.gesture === 'pinch') gestureType = 'pinch'
+    else if (tracking.frame.gesture === 'pointing') gestureType = 'pointing'
+
+    let trackingStatus: 'idle' | 'searching' | 'tracking' | 'loading' | 'lost' | 'error' = 'idle'
+    if (tracking.status === 'tracking') trackingStatus = 'tracking'
+    else if (tracking.status === 'tracking-lost') trackingStatus = 'lost'
+    else if (tracking.status === 'loading-model' || tracking.status === 'requesting-permission') trackingStatus = 'loading'
+    else if (
+      tracking.status === 'permission-denied' ||
+      tracking.status === 'model-error' ||
+      tracking.status === 'no-camera'
+    )
+      trackingStatus = 'error'
+
+    return {
+      isHandDetected: Boolean(primaryHand),
+      handPosition: primaryHand ? { x: 1 - primaryHand.palmCenter.x, y: primaryHand.palmCenter.y } : null,
+      landmarks: primaryHand
+        ? primaryHand.smoothedLandmarks.map((p): Point3D => ({ x: 1 - p.x, y: p.y, z: p.z ?? 0 }))
+        : undefined,
+      detectedGesture: gestureType,
+      confidence: primaryHand?.confidence ?? 0,
+      pinchDistance: primaryHand?.pinchDistance ?? 1,
+      isPinching: primaryHand?.isPinching ?? false,
+      trackingStatus,
+    }
+  }, [customHandTracking, tracking.frame, tracking.status])
 
   // Keyboard shortcut listeners: Spacebar to pause/unpause gestures, 'c' for calibration
   useEffect(() => {
@@ -236,15 +272,26 @@ export function ExplorerView({
         infoPanelOpen={infoPanelOpen}
         onToggleInfoPanel={setInfoPanelOpen}
         showHandTracking={showHandTracking}
-        onToggleHandTracking={() => setShowHandTracking((prev) => !prev)}
+        onToggleHandTracking={() => {
+          if (!tracking.isCameraActive) {
+            void tracking.enableCamera()
+          }
+          setShowHandTracking((prev) => !prev)
+        }}
         gestureMode={gestureMode}
         onGestureModeChange={setGestureMode}
         onOpenCalibration={() => setIsCalibrationOpen(true)}
         isCameraActive={tracking.isCameraActive}
+        isCameraLoading={tracking.isLoading}
+        cameraError={tracking.errorMessage}
+        cameraStream={tracking.stream}
+        videoRef={tracking.videoRef}
+        onEnableCamera={tracking.enableCamera}
+        onToggleCamera={tracking.toggleCamera}
         gestureFrame={tracking.frame}
         hoveredGestureTarget={hoveredGestureTarget}
         systemCount={celestialObjects.length}
-        handTracking={handTracking}
+        handTracking={adaptedHandTracking}
         onHeadOrient={setHeadOrient}
         onPinchSelect={handlePinchSelect}
         onHandNavigate={handleHandNavigate}

@@ -11,6 +11,7 @@ import {
   HelpCircle,
   Eye,
   EyeOff,
+  ShieldCheck,
 } from 'lucide-react'
 import type { CameraPosition, CameraState, FaceTrackingState, HandTrackingState } from './types'
 
@@ -53,6 +54,21 @@ export function CameraOverlay({
   className = '',
 }: CameraOverlayProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
+
+  // Ensure mirrored preview video element is connected to active stream
+  useEffect(() => {
+    const el = videoRef.current
+    if (cameraState.isActive && el && cameraState.stream) {
+      el.muted = true
+      el.defaultMuted = true
+      el.playsInline = true
+      el.autoplay = true
+      if (el.srcObject !== cameraState.stream) {
+        el.srcObject = cameraState.stream
+      }
+      el.play().catch(() => {})
+    }
+  }, [cameraState.isActive, cameraState.stream, videoRef])
 
   // Draw HUD face and hand landmarks onto overlay canvas
   useEffect(() => {
@@ -152,13 +168,22 @@ export function CameraOverlay({
       >
         <div className="flex items-center gap-1.5 p-1 rounded-xl bg-[#070b14]/90 border border-slate-750 backdrop-blur-md shadow-lg">
           <button
-            onClick={onOpenPrivacy}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-cyan-950/80 hover:bg-cyan-900/80 border border-cyan-500/40 text-cyan-300 text-xs font-mono transition-all cursor-pointer shadow-[0_0_12px_rgba(6,182,212,0.2)]"
-            title="Start webcam body and gesture tracking"
-            aria-label="Enable Cockpit Vision"
+            onClick={onToggleCamera}
+            className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-slate-950 text-xs font-bold font-mono transition-all cursor-pointer shadow-[0_0_14px_rgba(6,182,212,0.4)]"
+            title="Start webcam and gesture tracking"
+            aria-label="Enable Camera"
           >
-            <Camera className="w-3.5 h-3.5 text-cyan-400" />
-            <span className="font-semibold">Enable Cockpit Vision</span>
+            <Camera className="w-3.5 h-3.5 text-slate-950" />
+            <span>Enable Camera</span>
+          </button>
+
+          <button
+            onClick={onOpenPrivacy}
+            className="p-1.5 rounded-lg text-slate-400 hover:text-cyan-300 hover:bg-slate-800/60 transition-colors cursor-pointer"
+            title="Camera & Vision Privacy Guarantees"
+            aria-label="Open privacy guarantees"
+          >
+            <ShieldCheck className="w-4 h-4" />
           </button>
 
           <button
@@ -346,7 +371,21 @@ export function CameraOverlay({
         <div className="relative w-full aspect-[4/3] bg-slate-950 overflow-hidden flex items-center justify-center">
           {/* Live Video Feed (mirrored front-facing) */}
           <video
-            ref={videoRef}
+            ref={(node) => {
+              if (videoRef) {
+                ;(videoRef as React.MutableRefObject<HTMLVideoElement | null>).current = node
+              }
+              if (node && cameraState.stream) {
+                node.muted = true
+                node.defaultMuted = true
+                node.playsInline = true
+                node.autoplay = true
+                if (node.srcObject !== cameraState.stream) {
+                  node.srcObject = cameraState.stream
+                }
+                node.play().catch(() => {})
+              }
+            }}
             playsInline
             muted
             autoPlay
@@ -369,13 +408,11 @@ export function CameraOverlay({
             <div className="absolute bottom-0 right-0 w-2 h-2 border-b-2 border-r-2 border-cyan-400/60" />
           </div>
 
-          {/* Loading / Model Initializing Spinner */}
+          {/* Loading / Model Initializing Spinner (non-blocking so video feed is visible) */}
           {cameraState.isLoading && (
-            <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-slate-950/80 backdrop-blur-sm text-cyan-400 gap-2">
-              <div className="w-6 h-6 border-2 border-cyan-500/30 border-t-cyan-400 rounded-full animate-spin" />
-              <span className="text-[10px] text-cyan-300 tracking-wider">
-                Starting Vision Engine...
-              </span>
+            <div className="absolute top-2 left-2 z-10 flex items-center gap-1.5 px-2 py-1 rounded-md bg-slate-950/85 backdrop-blur-sm border border-cyan-500/40 text-cyan-300 text-[10px]">
+              <div className="w-3 h-3 border-2 border-cyan-500/30 border-t-cyan-400 rounded-full animate-spin" />
+              <span>Starting Vision Engine...</span>
             </div>
           )}
         </div>
