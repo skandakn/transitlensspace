@@ -131,7 +131,9 @@ export const PREDEFINED_OBSERVATIONS: PredefinedObservation[] = [
       numPoints: 1200,
       description: 'Quiet red dwarf host in Dorado. Known host of TOI-700 d, an Earth-sized planet inside the circumstellar habitable zone.'
     },
-    lightCurve: []
+    // Legacy browser-side workflow fixture. App selection guards backendDatasetId and
+    // never renders or analyzes this generated fixture for the bundled NASA target.
+    lightCurve: generateSyntheticLightCurve(3.742, 0.85, 0.0092, 3.25, 25, 30)
   },
   {
     id: 'Kepler-90',

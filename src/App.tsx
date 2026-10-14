@@ -482,7 +482,7 @@ export function App() {
   const [mission, setMission] = useState<SpaceMission>('TESS')
   const [lightCurve, setLightCurve] = useState<LightCurvePoint[]>(() => {
     const initialObs = PREDEFINED_OBSERVATIONS.find((o) => o.id === 'TOI-700')
-    return initialObs ? initialObs.lightCurve : generateSyntheticLightCurve(3.742, 0.85, 0.0092, 3.25, 25, 30)
+    return initialObs?.backendDatasetId ? [] : initialObs?.lightCurve || []
   })
   const [results, setResults] = useState<AnalysisResult[]>([])
 
