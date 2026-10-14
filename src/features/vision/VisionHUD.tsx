@@ -169,6 +169,7 @@ export function VisionHUD({
         handState={handState}
         videoRef={videoRef}
         isDemoMode={isDemoMode}
+        allowDemoMode={!isIntegrated}
         onToggleCamera={toggleCamera}
         onToggleMinimize={toggleMinimize}
         onCyclePosition={cyclePosition}

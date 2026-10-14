@@ -99,19 +99,23 @@ export function HudTopBar({
         <button
           id="hud-toggle-camera"
           className={`hud-btn flex items-center gap-1.5 ${
-            isCameraActive ? 'hud-btn--active border-emerald-500/60 text-emerald-300 font-semibold' : 'text-cyan-300'
+            isCameraActive && !isCameraLoading
+              ? 'hud-btn--active border-emerald-500/60 text-emerald-300 font-semibold'
+              : 'text-cyan-300'
           }`}
           onClick={() => {
             if (onToggleCamera) {
               onToggleCamera()
             }
           }}
-          title={isCameraActive ? 'Turn Off Webcam Camera' : 'Turn On Webcam Camera & Gesture Tracking'}
-          aria-pressed={isCameraActive}
+          title={isCameraLoading ? 'Starting camera and vision tracking' : isCameraActive ? 'Turn Off Webcam Camera' : 'Turn On Webcam Camera & Gesture Tracking'}
+          aria-busy={isCameraLoading}
+          aria-pressed={isCameraActive && !isCameraLoading}
+          disabled={isCameraLoading}
         >
-          <Camera size={13} className={isCameraActive ? 'text-emerald-400' : 'text-cyan-400'} />
-          <span>{isCameraActive ? 'Camera On' : isCameraLoading ? 'Starting...' : 'Enable Camera'}</span>
-          {isCameraActive && (
+          <Camera size={13} className={isCameraActive && !isCameraLoading ? 'text-emerald-400' : 'text-cyan-400'} />
+          <span>{isCameraLoading ? 'Starting…' : isCameraActive ? 'Camera On' : 'Enable Camera'}</span>
+          {isCameraActive && !isCameraLoading && (
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse ml-0.5" />
           )}
         </button>

@@ -122,6 +122,7 @@ export function useHandTracking(
   const [stream, setStream] = useState<MediaStream | null>(null)
   const rafIdRef = useRef<number | null>(null)
   const isRunningRef = useRef<boolean>(false)
+  const isStartingRef = useRef<boolean>(false)
 
   // Tracking history refs
   const prevHandsRef = useRef<{ [key: string]: SingleHandData }>({})
@@ -353,6 +354,11 @@ export function useHandTracking(
    * Starts webcam hardware and loads vision model
    */
   const enableCamera = useCallback(async () => {
+    // A browser permission request can stay open while the user decides. Ignore
+    // repeated clicks so we never open competing stream/model initializations.
+    if (isStartingRef.current || isRunningRef.current) return
+
+    isStartingRef.current = true
     setErrorMessage(null)
     setStatus('requesting-permission')
 
@@ -400,6 +406,7 @@ export function useHandTracking(
       fpsLastCalculatedRef.current = performance.now()
       setStatus('tracking-lost') // Camera is LIVE and awaiting hands
       rafIdRef.current = requestAnimationFrame((ts) => loopRef.current(ts))
+      isStartingRef.current = false
 
       // 3. Load and initialize MediaPipe HandLandmarker in background
       try {
@@ -410,6 +417,7 @@ export function useHandTracking(
       }
     } catch (err: any) {
       isRunningRef.current = false
+      isStartingRef.current = false
       if (err instanceof CameraError) {
         if (err.code === 'PERMISSION_DENIED') {
           setStatus('permission-denied')
@@ -449,6 +457,7 @@ export function useHandTracking(
    * Disables camera, stops all active hardware tracks and clears state
    */
   const disableCamera = useCallback(() => {
+    isStartingRef.current = false
     isRunningRef.current = false
     if (rafIdRef.current !== null) {
       cancelAnimationFrame(rafIdRef.current)

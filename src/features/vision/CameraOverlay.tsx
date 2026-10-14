@@ -23,6 +23,7 @@ export interface CameraOverlayProps {
   onCyclePosition: () => void
   onToggleHeadAdjustments: () => void
   onEnableDemoMode: () => void
+  allowDemoMode?: boolean
   className?: string
 }
 
@@ -44,6 +45,7 @@ export function CameraOverlay({
   onCyclePosition,
   onToggleHeadAdjustments,
   onEnableDemoMode,
+  allowDemoMode = true,
   className = '',
 }: CameraOverlayProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
@@ -151,11 +153,6 @@ export function CameraOverlay({
     }
   }, [faceState, handState, cameraState.isActive, cameraState.isMinimized])
 
-  // ── INACTIVE CAMERA: Sleek Launch Capsule ──
-  if (!cameraState.isActive) {
-    return null
-  }
-
   // ── CAMERA ERROR / PERMISSION DENIED ──
   if (cameraState.error || cameraState.permissionDenied) {
     return (
@@ -179,17 +176,25 @@ export function CameraOverlay({
             >
               Retry
             </button>
-            <button
-              onClick={onEnableDemoMode}
-              className="flex-1 py-1 px-2 rounded-lg bg-cyan-950/60 hover:bg-cyan-900/60 border border-cyan-500/40 text-cyan-300 text-[11px] flex items-center justify-center gap-1 transition-colors cursor-pointer"
-            >
-              <Sparkles className="w-3 h-3" />
-              <span>Demo Mode</span>
-            </button>
+            {allowDemoMode && (
+              <button
+                onClick={onEnableDemoMode}
+                className="flex-1 py-1 px-2 rounded-lg bg-cyan-950/60 hover:bg-cyan-900/60 border border-cyan-500/40 text-cyan-300 text-[11px] flex items-center justify-center gap-1 transition-colors cursor-pointer"
+              >
+                <Sparkles className="w-3 h-3" />
+                <span>Demo Mode</span>
+              </button>
+            )}
           </div>
         </div>
       </div>
     )
+  }
+
+  // The primary toolbar owns the idle camera action. Keep this overlay out of
+  // the scene until a stream is active, except when it needs to report an error.
+  if (!cameraState.isActive) {
+    return null
   }
 
   // ── MINIMIZED STATUS CAPSULE ──
