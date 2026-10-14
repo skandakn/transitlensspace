@@ -53,6 +53,10 @@ export interface ExplorerHUDProps {
   infoPanelOpen: boolean
   /** Toggle info panel open / close */
   onToggleInfoPanel: (open: boolean) => void
+  /** Whether the hand tracking overlay is active */
+  showHandTracking?: boolean
+  /** Toggle hand tracking overlay */
+  onToggleHandTracking?: () => void
   /** Total count of systems in the 3D scene */
   systemCount?: number
   /** Consumed tracking state from Member 1 */
@@ -83,6 +87,8 @@ export function ExplorerHUD({
   onToggleQuality,
   infoPanelOpen,
   onToggleInfoPanel,
+  showHandTracking,
+  onToggleHandTracking,
   systemCount,
   handTracking,
   onHeadOrient,
@@ -111,7 +117,12 @@ export function ExplorerHUD({
       />
       {/* TOP-LEFT: Compact Brand Logo + Exploration Mode Selector */}
       <div style={{ position: 'absolute', top: 16, left: 16 }}>
-        <HudTopBar mode={mode} onModeChange={onModeChange} />
+        <HudTopBar
+          mode={mode}
+          onModeChange={onModeChange}
+          showHandTracking={showHandTracking}
+          onToggleHandTracking={onToggleHandTracking}
+        />
       </div>
 
       {/* TOP-CENTER: Floating Object Label / Reticle when a body is targeted */}
