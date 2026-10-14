@@ -58,27 +58,31 @@ export function RootLayout({
       />
 
       {/* Main Content Area */}
-      <div className="lg:pl-72 flex flex-col min-h-screen relative z-10">
-        <TopBar
-          onToggleMobileMenu={() => setMobileMenuOpen(!mobileMenuOpen)}
-          selectedStar={selectedStar}
-          stars={stars}
-          onSelectStar={onSelectStar}
-          analysisStatus={analysisStatus}
-          onRunAnalysis={onRunAnalysis}
-          onResetAnalysis={onResetAnalysis}
-          isAnalyzing={isAnalyzing}
-          canAnalyze={canAnalyze}
-        />
+      <div className={`lg:pl-72 flex flex-col min-h-screen relative z-10 ${activeTab === 'universe' ? 'h-screen overflow-hidden' : ''}`}>
+        {activeTab !== 'universe' && (
+          <TopBar
+            onToggleMobileMenu={() => setMobileMenuOpen(!mobileMenuOpen)}
+            selectedStar={selectedStar}
+            stars={stars}
+            onSelectStar={onSelectStar}
+            analysisStatus={analysisStatus}
+            onRunAnalysis={onRunAnalysis}
+            onResetAnalysis={onResetAnalysis}
+            isAnalyzing={isAnalyzing}
+            canAnalyze={canAnalyze}
+          />
+        )}
 
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto space-y-6">
+        <main className={activeTab === 'universe' ? 'flex-1 relative w-full h-full overflow-hidden' : 'flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto space-y-6'}>
           {children}
         </main>
 
-        {/* Global Footer */}
-        <footer className="border-t border-slate-800/80 bg-[#070b14]/80 py-4 px-6 text-center text-xs text-slate-400 font-mono">
-          <span>TransitLens Exoplanet Detection System · NASA Kepler & TESS Photometry Pipeline · Open Source MIT</span>
-        </footer>
+        {/* Global Footer – suppressed in full-screen universe mode */}
+        {activeTab !== 'universe' && (
+          <footer className="border-t border-slate-800/80 bg-[#070b14]/80 py-4 px-6 text-center text-xs text-slate-400 font-mono">
+            <span>TransitLens Exoplanet Detection System · NASA Kepler &amp; TESS Photometry Pipeline · Open Source MIT</span>
+          </footer>
+        )}
       </div>
     </div>
   )

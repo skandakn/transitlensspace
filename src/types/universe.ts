@@ -2,7 +2,8 @@ import type { StarObservation, SpaceMission } from './index'
 
 /**
  * 3D Universe Explorer - Shared Celestial Types
- * Coordinated with Members 2-4 for astronomical registry integration.
+ * Coordinated across astronomical registry, interactive planetary systems,
+ * and NASA Exoplanet Archive scientific records.
  */
 
 export type CelestialObjectType = 'star' | 'planet' | 'system' | 'nebula' | 'galaxy'
@@ -13,9 +14,9 @@ export interface CelestialPlanet {
   id: string
   name: string
   /** Parent star identifier */
-  hostStarId: string
+  hostStarId?: string
   /** Parent star display name */
-  hostStarName: string
+  hostStarName?: string
   /** Confirmed disposition status per NASA Exoplanet Archive */
   disposition?: 'CONFIRMED' | 'CANDIDATE' | 'FALSE_POSITIVE'
   /** Primary astrophysical discovery method */
@@ -141,7 +142,7 @@ export interface UniverseSceneProps {
   selectedObjectId?: string
   /** Currently selected planet identifier (if a planet is focused) */
   selectedPlanetId?: string
-  /** Stable callback fired when user selects a star system */
+  /** Stable callback fired when user selects a celestial object or star system */
   onSelectObject?: (object: CelestialObject) => void
   /** Stable callback fired when user selects a specific exoplanet */
   onSelectPlanet?: (planet: CelestialPlanet, parentStar: CelestialObject) => void
@@ -155,11 +156,16 @@ export interface UniverseSceneProps {
   showLabels?: boolean
   /** Whether real-time orbital and corona motion is enabled */
   enableMotion?: boolean
+  /** Whether to hide built-in fallback toolbar & bottom buttons when controlled by an external HUD */
+  hideDefaultControls?: boolean
   /** Quality mode: 'low' disables post-processing for student laptops; 'high' enables full bloom */
   quality?: 'low' | 'medium' | 'high'
   /** Optional custom CSS class for outer container */
   className?: string
   /** Initial camera position [x, y, z] */
   initialCameraPosition?: [number, number, number]
+  /** Whether hand gesture recognition is enabled (default: true) */
+  enableGestures?: boolean
+  /** Initial gesture navigation mode ('explore' | 'grab' | 'select' | 'paused') */
+  initialGestureMode?: 'explore' | 'grab' | 'select' | 'paused'
 }
-

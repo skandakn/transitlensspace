@@ -174,7 +174,7 @@ export interface AnalysisResult {
 // 6. Navigation & UI Types
 // ---------------------------------------------------------------------------
 
-export type NavigationTab = 'analysis' | 'universe' | 'stars' | 'upload' | 'results' | 'docs';
+export type NavigationTab = 'analysis' | 'universe' | 'stars' | 'upload' | 'results';
 
 export interface NavItem {
   id: NavigationTab;
@@ -185,7 +185,12 @@ export interface NavItem {
 }
 
 // ---------------------------------------------------------------------------
-// 7. 3D Universe Explorer Types (Member 3D Graphics Lead)
+// 7. 3D Universe Explorer Types
 // ---------------------------------------------------------------------------
 export * from './universe';
+
+// ---------------------------------------------------------------------------
+// 8. Real-Time Hand Tracking & Gesture Types (Member 1)
+// ---------------------------------------------------------------------------
+export * from './gestures';
 

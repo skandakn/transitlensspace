@@ -1,17 +1,17 @@
 import { useState, useMemo } from 'react'
-import { Activity, ChevronDown, ChevronRight, Search, Sparkles, Compass } from 'lucide-react'
+import { Activity, ChevronDown, ChevronRight, Search, Sparkles } from 'lucide-react'
 import { RootLayout } from './layouts/RootLayout'
 import { UploadView } from './features/upload/UploadView'
 import { ResultsView } from './features/results/ResultsView'
 import { StarCatalogView } from './features/stars/StarCatalogView'
-import { DocsPage } from './pages/DocsPage'
 import { AnalysisResultsPanel } from './features/analysis/AnalysisResultsPanel'
 import { LightCurvePlot } from './features/analysis/LightCurvePlot'
 import { useAnalysisWorkflow } from './features/analysis/useAnalysisWorkflow'
 import { PREDEFINED_OBSERVATIONS, type PredefinedObservation } from './data/observations'
 import { MOCK_STARS, generateSyntheticLightCurve } from './data/mockData'
 import { Badge } from './components/ui/Badge'
-import { UniverseScene, starObservationsToCelestialObjects } from './features/universe'
+import { ExplorerView } from './features/explorer'
+import { starObservationsToCelestialObjects } from './features/universe'
 import { BUNDLED_CELESTIAL_SYSTEMS } from './data/astronomyData'
 import type {
   AnalysisResult,
@@ -478,7 +478,6 @@ export function App() {
     const adaptedCustom = starObservationsToCelestialObjects(customStars)
     return [...bundledWithObs, ...adaptedCustom]
   }, [stars])
-
   const handleSelectStar = (star: StarObservation) => {
     const matched = PREDEFINED_OBSERVATIONS.find(
       (o) =>
@@ -513,65 +512,17 @@ export function App() {
       canAnalyze={workflow.canAnalyze}
     >
       {activeTab === 'universe' && (
-        <div className="space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-xl bg-gradient-to-r from-cyan-950/40 via-slate-900/60 to-violet-950/30 border border-slate-800">
-            <div>
-              <div className="flex items-center gap-2">
-                <Compass className="w-5 h-5 text-cyan-400" />
-                <h1 className="text-xl sm:text-2xl font-bold text-white tracking-wide">
-                  3D Universe Explorer
-                </h1>
-                <Badge variant="cyan" className="text-xs">Real-Time WebGL</Badge>
-              </div>
-              <p className="text-xs text-slate-400 mt-1">
-                Explore thousands of stars, distant spiral galaxies, and multi-planet systems in realistic 3D space. Click any star system to target its photometric light curve.
-              </p>
-            </div>
-            {selectedStar && selectedStar.id !== '—' && (
-              <div className="flex items-center gap-2 bg-slate-900/80 px-3 py-2 rounded-lg border border-slate-750">
-                <span className="text-xs text-slate-400">Target:</span>
-                <span className="text-xs font-bold text-cyan-300 font-mono">{selectedStar.name}</span>
-                <button
-                  onClick={() => setActiveTab('analysis')}
-                  className="ml-2 text-xs text-cyan-400 hover:text-cyan-300 hover:underline flex items-center gap-1 cursor-pointer"
-                >
-                  Analyze Light Curve ➔
-                </button>
-              </div>
-            )}
-          </div>
-
-          <div className="h-[74vh] min-h-[580px] w-full">
-            <UniverseScene
-              celestialObjects={celestialObjects}
-              selectedObjectId={selectedStar.id}
-              onSelectObject={(obj) => {
-                const matchedStar = stars.find(
-                  (s) =>
-                    s.id.toLowerCase() === obj.id.toLowerCase() ||
-                    s.name.toLowerCase() === obj.name.toLowerCase() ||
-                    obj.name.toLowerCase().includes(s.name.toLowerCase())
-                ) || obj.starObservation
-                if (matchedStar) {
-                  handleSelectStar(matchedStar)
-                }
-              }}
-              onAnalyzeLightCurve={(star) => {
-                const matchedStar = stars.find(
-                  (s) =>
-                    s.id.toLowerCase() === star.id.toLowerCase() ||
-                    s.name.toLowerCase() === star.name.toLowerCase() ||
-                    star.name.toLowerCase().includes(s.name.toLowerCase())
-                ) || star.starObservation
-                if (matchedStar) {
-                  handleSelectStar(matchedStar)
-                }
-                setActiveTab('analysis')
-              }}
-              className="h-full w-full"
-            />
-          </div>
-        </div>
+        <ExplorerView
+          stars={stars}
+          selectedStarId={selectedStar.id}
+          celestialObjects={celestialObjects}
+          onSelectStar={handleSelectStar}
+          onNavigateToAnalysis={() => setActiveTab('analysis')}
+          onReturnToUniverse={() => {
+            // reset selection back to first catalog star or default
+            if (stars.length > 0) handleSelectStar(stars[0])
+          }}
+        />
       )}
 
       {activeTab === 'analysis' && (
@@ -615,8 +566,6 @@ export function App() {
       )}
 
       {activeTab === 'results' && <ResultsView results={results} />}
-
-      {activeTab === 'docs' && <DocsPage />}
     </RootLayout>
   )
 }
