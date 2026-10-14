@@ -1,6 +1,5 @@
 import React, { useRef, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
-import { Html } from '@react-three/drei'
 import * as THREE from 'three'
 import { CentralStar } from './CentralStar'
 import type { CelestialObject, CelestialPlanet } from '../../types/universe'
@@ -9,27 +8,44 @@ export interface StarSystemProps {
   system: CelestialObject
   isSelected?: boolean
   isHovered?: boolean
+  selectedPlanetId?: string
   onSelect?: (system: CelestialObject) => void
+  onSelectPlanet?: (planet: CelestialPlanet, parentStar: CelestialObject) => void
   onHover?: (system: CelestialObject | null) => void
   showOrbits?: boolean
   showLabels?: boolean
   enableMotion?: boolean
 }
 
+interface PlanetOrbiterProps {
+  planet: CelestialPlanet
+  starColor?: string
+  enableMotion?: boolean
+  isSelected?: boolean
+  onSelectPlanet?: (planet: CelestialPlanet) => void
+}
+
 /**
- * Individual Exoplanet Orbiting Mesh
+ * Individual Exoplanet Orbiting Mesh with click interactions
  */
 function PlanetOrbiter({
   planet,
-  starColor,
-  enableMotion = true
-}: {
-  planet: CelestialPlanet
-  starColor: string
-  enableMotion?: boolean
-}) {
+  enableMotion = true,
+  isSelected = false,
+  onSelectPlanet
+}: PlanetOrbiterProps) {
   const planetRef = useRef<THREE.Group>(null)
-  const angleRef = useRef<number>(Math.random() * Math.PI * 2)
+  const angleRef = useRef<number>(0)
+  const [isHovered, setIsHovered] = useState(false)
+
+  // Initialize deterministic starting phase based on planet distance/name
+  React.useEffect(() => {
+    let hash = 0
+    for (let i = 0; i < planet.name.length; i++) {
+      hash = (hash * 31 + planet.name.charCodeAt(i)) % 1000
+    }
+    angleRef.current = (hash / 1000) * Math.PI * 2
+  }, [planet.name])
 
   useFrame((_, delta) => {
     if (!enableMotion || !planetRef.current) return
@@ -46,26 +62,57 @@ function PlanetOrbiter({
 
   return (
     <group ref={planetRef}>
-      {/* Planet Sphere */}
-      <mesh castShadow receiveShadow>
-        <sphereGeometry args={[planet.radius, 20, 20]} />
+      {/* Click and hover target mesh */}
+      <mesh
+        castShadow
+        receiveShadow
+        onClick={(e) => {
+          e.stopPropagation()
+          onSelectPlanet?.(planet)
+        }}
+        onPointerOver={(e) => {
+          e.stopPropagation()
+          setIsHovered(true)
+          document.body.style.cursor = 'pointer'
+        }}
+        onPointerOut={() => {
+          setIsHovered(false)
+          document.body.style.cursor = 'auto'
+        }}
+      >
+        <sphereGeometry args={[planet.radius * (isHovered ? 1.15 : 1), 22, 22]} />
         <meshStandardMaterial
           color={planet.color}
-          roughness={0.65}
-          metalness={0.15}
+          roughness={0.6}
+          metalness={0.2}
+          emissive={isSelected ? '#10b981' : isHovered ? '#38bdf8' : '#000000'}
+          emissiveIntensity={isSelected ? 0.4 : isHovered ? 0.25 : 0}
         />
       </mesh>
 
       {/* Atmospheric Rim Glow */}
       {planet.atmosphereColor && (
         <mesh>
-          <sphereGeometry args={[planet.radius * 1.15, 16, 16]} />
+          <sphereGeometry args={[planet.radius * 1.18, 16, 16]} />
           <meshBasicMaterial
             color={planet.atmosphereColor}
             transparent
-            opacity={0.3}
+            opacity={0.35}
             blending={THREE.AdditiveBlending}
             side={THREE.BackSide}
+          />
+        </mesh>
+      )}
+
+      {/* Selected Target Ring for Planet */}
+      {(isSelected || isHovered) && (
+        <mesh rotation={[Math.PI / 2, 0, 0]}>
+          <ringGeometry args={[planet.radius * 1.6, planet.radius * 1.85, 32]} />
+          <meshBasicMaterial
+            color={isSelected ? '#34d399' : '#38bdf8'}
+            side={THREE.DoubleSide}
+            transparent
+            opacity={0.85}
           />
         </mesh>
       )}
@@ -142,13 +189,89 @@ function SelectionReticle({ radius }: { radius: number }) {
 }
 
 /**
+ * Native WebGL Sprite Label
+ * Ultra-fast GPU-rendered billboard text without extra DOM roots or React 19 race conditions.
+ */
+function StarSpriteLabel({
+  name,
+  spectralType,
+  temperature,
+  planetsCount,
+  isSelected,
+  isHovered,
+  yOffset = 3.8
+}: {
+  name: string
+  spectralType?: string
+  temperature: number
+  planetsCount: number
+  isSelected: boolean
+  isHovered: boolean
+  yOffset?: number
+}) {
+  const texture = React.useMemo(() => {
+    const canvas = document.createElement('canvas')
+    canvas.width = 512
+    canvas.height = 140
+    const ctx = canvas.getContext('2d')
+    if (ctx) {
+      // Rounded background container
+      ctx.fillStyle = isSelected
+        ? 'rgba(6, 78, 99, 0.92)'
+        : isHovered
+        ? 'rgba(15, 23, 42, 0.90)'
+        : 'rgba(7, 11, 20, 0.78)'
+
+      ctx.strokeStyle = isSelected
+        ? '#06b6d4'
+        : isHovered
+        ? '#38bdf8'
+        : '#1e293b'
+      ctx.lineWidth = isSelected ? 6 : 3
+
+      ctx.beginPath()
+      ctx.roundRect(10, 10, 492, 120, 24)
+      ctx.fill()
+      ctx.stroke()
+
+      // Star title
+      ctx.font = 'bold 42px monospace'
+      ctx.fillStyle = isSelected ? '#e0f2fe' : '#ffffff'
+      ctx.textAlign = 'center'
+      ctx.fillText(name, 256, 62)
+
+      // Subtitle metadata
+      ctx.font = '26px monospace'
+      ctx.fillStyle = isSelected ? '#67e8f9' : '#94a3b8'
+      ctx.fillText(`${spectralType || 'Star'} · ${temperature}K · ${planetsCount} Planets`, 256, 104)
+    }
+    const tex = new THREE.CanvasTexture(canvas)
+    tex.needsUpdate = true
+    return tex
+  }, [name, spectralType, temperature, planetsCount, isSelected, isHovered])
+
+  return (
+    <sprite position={[0, yOffset, 0]} scale={[7.2, 1.95, 1]}>
+      <spriteMaterial
+        map={texture}
+        transparent
+        depthWrite={false}
+        toneMapped={false}
+      />
+    </sprite>
+  )
+}
+
+/**
  * Interactive Star System Component
  */
 export function StarSystem({
   system,
   isSelected = false,
   isHovered = false,
+  selectedPlanetId,
   onSelect,
+  onSelectPlanet,
   onHover,
   showOrbits = true,
   showLabels = true,
@@ -215,40 +338,23 @@ export function StarSystem({
             planet={planet}
             starColor={system.color}
             enableMotion={enableMotion}
+            isSelected={planet.id === selectedPlanetId}
+            onSelectPlanet={(p) => onSelectPlanet?.(p, system)}
           />
         </React.Fragment>
       ))}
 
-      {/* 3D Billboard Label */}
+      {/* Native WebGL 3D Billboard Sprite Label */}
       {showLabels && (
-        <Html
-          position={[0, system.radius * 1.8 + 1.2, 0]}
-          center
-          distanceFactor={60}
-          className="pointer-events-none select-none transition-all duration-200"
-        >
-          <div
-            className={`px-2.5 py-1 rounded-md text-center whitespace-nowrap backdrop-blur-md border font-mono transition-all ${
-              isSelected
-                ? 'bg-cyan-950/90 border-cyan-400 text-cyan-200 shadow-[0_0_15px_rgba(6,182,212,0.4)] scale-110'
-                : activeHover
-                ? 'bg-slate-900/90 border-cyan-500/60 text-white shadow-[0_0_10px_rgba(6,182,212,0.2)]'
-                : 'bg-[#090e1a]/75 border-slate-700/60 text-slate-300'
-            }`}
-          >
-            <div className="text-[11px] font-bold tracking-wide flex items-center justify-center gap-1.5">
-              <span>{system.name}</span>
-              {system.mission && (
-                <span className="text-[9px] px-1 py-0.2 rounded bg-cyan-900/60 text-cyan-300 font-sans">
-                  {system.mission}
-                </span>
-              )}
-            </div>
-            <div className="text-[9px] text-slate-400 mt-0.5">
-              {system.spectralType || 'Star'} · {system.temperature}K · {system.planets?.length || 0} Planets
-            </div>
-          </div>
-        </Html>
+        <StarSpriteLabel
+          name={system.name}
+          spectralType={system.spectralType}
+          temperature={system.temperature}
+          planetsCount={system.planets?.length || 0}
+          isSelected={isSelected}
+          isHovered={activeHover}
+          yOffset={system.radius * 1.6 + 1.8}
+        />
       )}
     </group>
   )

@@ -12,9 +12,51 @@ export type SpectralClass = 'O' | 'B' | 'A' | 'F' | 'G' | 'K' | 'M' | 'D'
 export interface CelestialPlanet {
   id: string
   name: string
+  /** Parent star identifier */
+  hostStarId: string
+  /** Parent star display name */
+  hostStarName: string
+  /** Confirmed disposition status per NASA Exoplanet Archive */
+  disposition?: 'CONFIRMED' | 'CANDIDATE' | 'FALSE_POSITIVE'
+  /** Primary astrophysical discovery method */
+  discoveryMethod?: 'Transit' | 'Radial Velocity' | 'Transit Timing Variations' | 'Direct Imaging' | 'Microlensing'
+  /** Year of confirmed discovery */
+  discoveryYear?: number | null
+  /** Primary observatory or mission discovery facility */
+  discoveryFacility?: string | null
+
+  // --- Measured Scientific Quantities (NASA Exoplanet Archive) ---
+  /** Orbital period in Earth days (null if unmeasured) */
+  periodDays?: number | null
+  /** Semi-major axis in Astronomical Units (null if unmeasured) */
+  semiMajorAxisAu?: number | null
+  /** Planet radius in Earth radii R⊕ (null if unmeasured, e.g. RV-only) */
+  planetRadiusEarth?: number | null
+  /** Planet mass in Earth masses M⊕ (null if unmeasured, e.g. transit-only without TTV/RV) */
+  massEarth?: number | null
+  /** Calculated planetary equilibrium temperature in Kelvin (null if unmeasured) */
+  equilibriumTempK?: number | null
+  /** Measured photometric transit depth in parts-per-million (null for non-transiting) */
+  depthPpm?: number | null
+  /** Transit duration in hours (null for non-transiting) */
+  transitDurationHours?: number | null
+  /** Whether the planet orbits within circumstellar habitable zone boundaries */
+  isHabitableZone?: boolean
+
+  // --- Provenance & Scientific Reference Metadata ---
+  /** Official NASA Exoplanet Archive record URL */
+  sourceUrl?: string
+  /** Primary literature citation */
+  sourceCitation?: string
+  /** Data retrieval timestamp */
+  retrievalDate?: string
+  /** Detailed scientific notes from peer-reviewed literature */
+  scientificNotes?: string
+
+  // --- Illustrative 3D Scene Visualization Properties (Not to 1:1 cosmic scale) ---
   /** Visual radius for 3D sphere */
   radius: number
-  /** Distance from parent star in 3D scene units */
+  /** Compressed distance from parent star in 3D scene units */
   distanceFromStar: number
   /** Orbital animation angular speed */
   orbitSpeed: number
@@ -28,12 +70,6 @@ export interface CelestialPlanet {
   hasRings?: boolean
   /** Ring inner/outer radii relative to planet radius */
   ringRadius?: [number, number]
-  /** Orbital period in Earth days */
-  periodDays?: number
-  /** Measured photometric transit depth in ppm */
-  depthPpm?: number
-  /** Planet radius in Earth radii */
-  planetRadiusEarth?: number
 }
 
 export interface CelestialObject {
@@ -64,13 +100,36 @@ export interface CelestialObject {
   planets?: CelestialPlanet[]
   /** Associated space mission */
   mission?: SpaceMission
-  /** Distance from Solar System in parsecs */
-  distanceParsecs?: number
-  /** Apparent magnitude */
-  magnitude?: number
+  /** Distance from Solar System in parsecs (null if unmeasured) */
+  distanceParsecs?: number | null
+  /** Distance from Solar System in light-years */
+  distanceLightYears?: number | null
+  /** Stellar radius in Solar radii R☉ (null if unmeasured) */
+  stellarRadiusSolar?: number | null
+  /** Stellar mass in Solar masses M☉ (null if unmeasured) */
+  stellarMassSolar?: number | null
+  /** Apparent optical magnitude Vmag (null if unmeasured) */
+  magnitude?: number | null
+  /** Right Ascension in decimal degrees */
+  raDegrees?: number | null
+  /** Declination in decimal degrees */
+  decDegrees?: number | null
+  /** Astronomical host constellation */
+  constellation?: string | null
+
+  // --- Provenance & Scientific Reference Metadata ---
+  sourceUrl?: string
+  sourceCitation?: string
+  retrievalDate?: string
+
   /** Point light intensity emitted by the star */
   lightIntensity?: number
 }
+
+export type SelectedTarget =
+  | { type: 'star'; star: CelestialObject }
+  | { type: 'planet'; planet: CelestialPlanet; parentStar: CelestialObject }
+  | null
 
 /**
  * Component API for UniverseScene
@@ -78,10 +137,14 @@ export interface CelestialObject {
 export interface UniverseSceneProps {
   /** Array of celestial objects to render in 3D space */
   celestialObjects: CelestialObject[]
-  /** Currently selected object identifier */
+  /** Currently selected star system identifier */
   selectedObjectId?: string
-  /** Stable callback fired when user selects a celestial object */
+  /** Currently selected planet identifier (if a planet is focused) */
+  selectedPlanetId?: string
+  /** Stable callback fired when user selects a star system */
   onSelectObject?: (object: CelestialObject) => void
+  /** Stable callback fired when user selects a specific exoplanet */
+  onSelectPlanet?: (planet: CelestialPlanet, parentStar: CelestialObject) => void
   /** Currently hovered object identifier */
   hoveredObjectId?: string
   /** Stable callback fired when hovering over an object */
@@ -99,3 +162,4 @@ export interface UniverseSceneProps {
   /** Initial camera position [x, y, z] */
   initialCameraPosition?: [number, number, number]
 }
+
