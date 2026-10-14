@@ -155,7 +155,7 @@ export function HudTopBar({
             title="Explore Mode: Open hand rotates and tilts camera"
           >
             <Compass size={12} />
-            <span className="hidden md:inline">Explore</span>
+            <span className="hidden 2xl:inline">Explore</span>
           </button>
           <button
             onClick={() => onGestureModeChange('grab')}
@@ -165,7 +165,7 @@ export function HudTopBar({
             title="Grab Mode: Pinch and drag to rotate view"
           >
             <Hand size={12} />
-            <span className="hidden md:inline">Grab</span>
+            <span className="hidden 2xl:inline">Grab</span>
           </button>
           <button
             onClick={() => onGestureModeChange('select')}
@@ -175,7 +175,7 @@ export function HudTopBar({
             title="Select Mode: Point at planet and pinch to lock & inspect"
           >
             <Target size={12} />
-            <span className="hidden md:inline">Select</span>
+            <span className="hidden 2xl:inline">Select</span>
           </button>
           <button
             onClick={() => onGestureModeChange('paused')}
@@ -185,7 +185,7 @@ export function HudTopBar({
             title="Pause Gesture Inputs (Spacebar)"
           >
             <Pause size={12} />
-            <span className="hidden md:inline">Paused</span>
+            <span className="hidden 2xl:inline">Paused</span>
           </button>
 
           {onOpenCalibration && (
@@ -195,7 +195,7 @@ export function HudTopBar({
               title="Open Gesture Calibration & Kinematics Settings (Key: C)"
             >
               <Sliders size={12} />
-              <span className="hidden md:inline">Calibrate</span>
+              <span className="hidden 2xl:inline">Calibrate</span>
             </button>
           )}
         </div>

@@ -208,7 +208,7 @@ export function ExplorerHUD({
       )}
 
       {/* TOP-LEFT: Compact Brand Logo + Exploration Mode Selector + Gesture Bar */}
-      <div style={{ position: 'absolute', top: 16, left: 16 }}>
+      <div className="hud-topbar-slot">
         <HudTopBar
           mode={mode}
           onModeChange={onModeChange}
@@ -220,20 +220,13 @@ export function ExplorerHUD({
           isCameraActive={isCameraActive}
           isCameraLoading={isCameraLoading}
           onToggleCamera={onToggleCamera}
+          className="hud-topbar--responsive"
         />
       </div>
 
       {/* TOP-CENTER: Floating Object Label / Reticle when a body is targeted */}
       {selectedStar && selectedStar.id !== '—' && (
-        <div
-          style={{
-            position: 'absolute',
-            top: 68,
-            left: '50%',
-            transform: 'translateX(-50%)',
-            zIndex: 15,
-          }}
-        >
+        <div className="hud-object-label-slot">
           <ObjectLabel
             star={selectedStar}
             onInspect={() => onToggleInfoPanel(true)}
@@ -243,7 +236,7 @@ export function ExplorerHUD({
       )}
 
       {/* TOP-RIGHT: Star & Planet Catalogue Search */}
-      <div style={{ position: 'absolute', top: 16, right: 16 }}>
+      <div className="hud-search-slot">
         <CelestialSearch
           stars={stars}
           selectedStarId={selectedStar?.id}

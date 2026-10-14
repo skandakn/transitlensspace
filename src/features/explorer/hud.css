@@ -417,6 +417,81 @@
   z-index: 10;
 }
 
+/* The search catalogue owns a fixed top-right column. The flight toolbar is
+   constrained to the remaining space so enabled vision controls cannot render
+   beneath the search input. */
+.hud-topbar-slot {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  right: 312px;
+  min-width: 0;
+  z-index: 21;
+}
+
+.hud-topbar--responsive {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  flex-wrap: nowrap;
+  gap: 0.55rem;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.hud-topbar--responsive::-webkit-scrollbar {
+  display: none;
+}
+
+.hud-topbar--responsive > * {
+  flex-shrink: 0;
+}
+
+.hud-search-slot {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  z-index: 25;
+}
+
+.hud-object-label-slot {
+  position: absolute;
+  top: 68px;
+  left: 50%;
+  z-index: 15;
+  transform: translateX(-50%);
+}
+
+@media (max-width: 1024px) {
+  .hud-topbar-slot {
+    right: 16px;
+  }
+
+  .hud-search-slot {
+    top: 78px;
+  }
+
+  .hud-object-label-slot {
+    top: 134px;
+  }
+}
+
+@media (max-width: 640px) {
+  .hud-search-slot {
+    top: 74px;
+    left: 16px;
+  }
+
+  .hud-search-slot #hud-search {
+    width: 100% !important;
+  }
+
+  .hud-object-label-slot {
+    top: 130px;
+    max-width: calc(100% - 32px);
+  }
+}
+
 /* Re-enable pointer events only for interactive HUD elements */
 .hud-interactive {
   pointer-events: auto;
