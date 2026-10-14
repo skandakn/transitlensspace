@@ -160,16 +160,42 @@ export function UniverseScene({
 
   const searchContainerRef = useRef<HTMLDivElement>(null)
 
-  // Derive active celestial target (respects manual interaction, otherwise props)
-  const activeTarget: SelectedTarget = useMemo(() => {
-    if (userSelectedTarget !== undefined) {
-      return userSelectedTarget
+  // When selectedObjectId or controlledPlanetId prop changes from parent, clear local override
+  useEffect(() => {
+    setUserSelectedTarget(undefined)
+    setUserSelectedPlanetId(undefined)
+  }, [selectedObjectId, controlledPlanetId])
+
+  // Derive active celestial target (prioritizes controlled props, then resolves ID/name robustly)
+  const activeTarget: SelectedTarget | null = useMemo(() => {
+    if (controlledTarget) {
+      return controlledTarget
     }
+
     if (selectedObjectId) {
-      const star = celestialObjects.find((s) => s.id === selectedObjectId)
+      const selClean = selectedObjectId.toLowerCase().replace(/[^a-z0-9]/g, '')
+      const star = celestialObjects.find((s) => {
+        const idClean = s.id.toLowerCase().replace(/[^a-z0-9]/g, '')
+        const nameClean = s.name.toLowerCase().replace(/[^a-z0-9]/g, '')
+        const obsIdClean = s.starObservation?.id?.toLowerCase().replace(/[^a-z0-9]/g, '')
+        const obsNameClean = s.starObservation?.name?.toLowerCase().replace(/[^a-z0-9]/g, '')
+        const catIdClean = s.starObservation?.catalogId?.toLowerCase().replace(/[^a-z0-9]/g, '')
+
+        return (
+          idClean === selClean ||
+          nameClean === selClean ||
+          (obsIdClean && obsIdClean === selClean) ||
+          (obsNameClean && obsNameClean === selClean) ||
+          (catIdClean && catIdClean === selClean) ||
+          nameClean.includes(selClean) ||
+          selClean.includes(nameClean)
+        )
+      })
+
       if (star) {
-        if (controlledPlanetId && star.planets) {
-          const planet = star.planets.find((p) => p.id === controlledPlanetId)
+        const planetId = userSelectedPlanetId !== undefined ? userSelectedPlanetId : controlledPlanetId
+        if (planetId && star.planets) {
+          const planet = star.planets.find((p) => p.id === planetId)
           if (planet) {
             return { type: 'planet', planet, parentStar: star }
           }
@@ -177,8 +203,13 @@ export function UniverseScene({
         return { type: 'star', star }
       }
     }
+
+    if (userSelectedTarget !== undefined) {
+      return userSelectedTarget
+    }
+
     return null
-  }, [userSelectedTarget, selectedObjectId, controlledPlanetId, celestialObjects])
+  }, [controlledTarget, selectedObjectId, controlledPlanetId, userSelectedPlanetId, userSelectedTarget, celestialObjects])
 
   const selectedPlanetId = userSelectedPlanetId !== undefined ? userSelectedPlanetId : controlledPlanetId
 
@@ -199,7 +230,6 @@ export function UniverseScene({
     return searchCelestialCatalog(searchQuery)
   }, [searchQuery])
 
-
   const handleSelectStar = (star: CelestialObject) => {
     setUserSelectedTarget({ type: 'star', star })
     setUserSelectedPlanetId(undefined)
@@ -213,7 +243,7 @@ export function UniverseScene({
   }
 
   const handleResetCamera = () => {
-    setUserSelectedTarget(null)
+    setUserSelectedTarget(undefined)
     setUserSelectedPlanetId(undefined)
     setResetTrigger((prev) => prev + 1)
   }
