@@ -159,6 +159,13 @@ export interface AnalysisResult {
   bestCandidate?: TransitEvent;
   foldedPoints?: LightCurvePoint[];
   modelFit?: ModelFitParameters;
+  detectedIntervals?: {
+    startTime: number;
+    endTime: number;
+    centerTime: number;
+    depthPpm: number;
+    snr: number;
+  }[];
   notes?: string;
   errorMessage?: string;
 }
@@ -167,7 +174,7 @@ export interface AnalysisResult {
 // 6. Navigation & UI Types
 // ---------------------------------------------------------------------------
 
-export type NavigationTab = 'analysis' | 'stars' | 'upload' | 'results' | 'docs';
+export type NavigationTab = 'analysis' | 'universe' | 'stars' | 'upload' | 'results' | 'docs';
 
 export interface NavItem {
   id: NavigationTab;
@@ -177,4 +184,8 @@ export interface NavItem {
   badge?: string;
 }
 
+// ---------------------------------------------------------------------------
+// 7. 3D Universe Explorer Types
+// ---------------------------------------------------------------------------
 export * from './universe';
+

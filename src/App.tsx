@@ -1,23 +1,17 @@
 import { useState, useMemo } from 'react'
-import {
-  CartesianGrid,
-  ResponsiveContainer,
-  Scatter,
-  ScatterChart,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts'
-import { Activity, ChevronDown, ChevronRight, Search } from 'lucide-react'
+import { Activity, ChevronDown, ChevronRight, Search, Sparkles, Compass } from 'lucide-react'
 import { RootLayout } from './layouts/RootLayout'
 import { UploadView } from './features/upload/UploadView'
 import { ResultsView } from './features/results/ResultsView'
 import { StarCatalogView } from './features/stars/StarCatalogView'
 import { DocsPage } from './pages/DocsPage'
 import { AnalysisResultsPanel } from './features/analysis/AnalysisResultsPanel'
+import { LightCurvePlot } from './features/analysis/LightCurvePlot'
 import { useAnalysisWorkflow } from './features/analysis/useAnalysisWorkflow'
-import { generateFlatLightCurve, generateNoisyLightCurve } from './features/analysis/transitDetection'
+import { PREDEFINED_OBSERVATIONS, type PredefinedObservation } from './data/observations'
 import { MOCK_STARS, generateSyntheticLightCurve } from './data/mockData'
+import { Badge } from './components/ui/Badge'
+import { UniverseScene, starObservationsToCelestialObjects } from './features/universe'
 import type {
   AnalysisResult,
   LightCurvePoint,
@@ -31,12 +25,18 @@ const missionOptions: SpaceMission[] = ['TESS', 'Kepler', 'K2', 'Custom']
 
 function makeWorkspaceStar(identifier: string, mission: SpaceMission): StarObservation {
   const target = identifier.trim()
-  // Check if target matches one of our known catalog stars
   const matched = MOCK_STARS.find(
     (s) => s.id.toLowerCase() === target.toLowerCase() || s.name.toLowerCase() === target.toLowerCase()
   )
   if (matched) {
     return matched
+  }
+
+  const matchedObs = PREDEFINED_OBSERVATIONS.find(
+    (o) => o.id.toLowerCase() === target.toLowerCase() || o.name.toLowerCase() === target.toLowerCase()
+  )
+  if (matchedObs) {
+    return matchedObs.star
   }
 
   return {
@@ -55,58 +55,6 @@ function makeWorkspaceStar(identifier: string, mission: SpaceMission): StarObser
   }
 }
 
-function LightCurveChart({ data }: { data: LightCurvePoint[] }) {
-  if (data.length === 0) {
-    return (
-      <div className="chart-grid" aria-hidden="true">
-        {Array.from({ length: 16 }, (_, index) => <span key={index} />)}
-        <div className="chart-empty-state">
-          <div className="chart-empty-icon"><Activity size={19} strokeWidth={1.7} /></div>
-          <p>Light curve will appear here</p>
-          <span>Choose a target star and connect observation data to begin.</span>
-        </div>
-      </div>
-    )
-  }
-
-  return (
-    <div className="chart-grid chart-grid--populated">
-      <ResponsiveContainer width="100%" height="100%">
-        <ScatterChart data={data} margin={{ top: 10, right: 12, bottom: 8, left: 4 }}>
-          <CartesianGrid strokeDasharray="3 5" stroke="#2b3a4b" opacity={0.65} />
-          <XAxis
-            dataKey="time"
-            name="Time"
-            type="number"
-            tick={{ fill: '#8293a7', fontSize: 9 }}
-            tickLine={{ stroke: '#394a5d' }}
-            axisLine={{ stroke: '#394a5d' }}
-            tickFormatter={(val) => `${val}d`}
-          />
-          <YAxis
-            dataKey="flux"
-            name="Relative flux"
-            type="number"
-            domain={['auto', 'auto']}
-            width={54}
-            tick={{ fill: '#8293a7', fontSize: 9 }}
-            tickLine={{ stroke: '#394a5d' }}
-            axisLine={{ stroke: '#394a5d' }}
-            tickFormatter={(value: number) => value.toFixed(4)}
-          />
-          <Tooltip
-            cursor={{ strokeDasharray: '3 3', stroke: '#5b728a' }}
-            contentStyle={{ border: '1px solid #34495b', borderRadius: 6, color: '#dce8f4', background: '#0b1522' }}
-            formatter={(value) => [Number(value).toFixed(6), 'Flux']}
-            labelFormatter={(value) => `Time: ${value} d`}
-          />
-          <Scatter name="Observed flux" dataKey="flux" fill="#59d6e2" opacity={0.78} />
-        </ScatterChart>
-      </ResponsiveContainer>
-    </div>
-  )
-}
-
 interface DiscoveryWorkspaceProps {
   targetId: string
   setTargetId: (value: string) => void
@@ -115,7 +63,9 @@ interface DiscoveryWorkspaceProps {
   selectedStar: StarObservation
   lightCurve: LightCurvePoint[]
   workflow: ReturnType<typeof useAnalysisWorkflow>
-  onSelectPreset: (star: StarObservation, points: LightCurvePoint[]) => void
+  selectedObsId: string
+  onSelectObservation: (obsId: string) => void
+  currentObs?: PredefinedObservation
 }
 
 function DiscoveryWorkspace({
@@ -126,7 +76,9 @@ function DiscoveryWorkspace({
   selectedStar,
   lightCurve,
   workflow,
-  onSelectPreset,
+  selectedObsId,
+  onSelectObservation,
+  currentObs
 }: DiscoveryWorkspaceProps) {
   return (
     <div className="dashboard-workspace" id="workspace">
@@ -143,7 +95,7 @@ function DiscoveryWorkspace({
             className="engine-status"
             aria-label={`Analysis engine status: ${
               workflow.isAnalyzing
-                ? 'Processing'
+                ? 'Processing BLS grid'
                 : workflow.status === 'completed'
                 ? 'Analysis Ready'
                 : 'Connected'
@@ -166,7 +118,7 @@ function DiscoveryWorkspace({
                 ? 'Processing BLS grid...'
                 : workflow.status === 'completed'
                 ? 'Outcome Available'
-                : 'Connected (Member 5 BLS)'}
+                : 'Connected (BLS Algorithm)'}
             </strong>
           </div>
         </div>
@@ -178,8 +130,96 @@ function DiscoveryWorkspace({
           <div className="section-number">01</div>
           <div>
             <h2 id="target-heading">Select a target star</h2>
-            <p>Enter a catalog identifier and mission, or load a calibrated observation set below.</p>
+            <p>Choose a calibrated test observation below or enter a custom catalog identifier.</p>
           </div>
+        </div>
+
+        {/* Predefined Observation Selector */}
+        <div className="mb-4 p-3 rounded-lg bg-slate-900/70 border border-slate-800 space-y-3">
+          <label className="field-group w-full">
+            <div className="flex items-center justify-between">
+              <span className="field-label text-slate-200 font-semibold text-xs">
+                Predefined Test Observation Dataset
+              </span>
+              <span className="text-[10px] text-cyan-400 font-mono">
+                Real & Calibrated Test Cadences
+              </span>
+            </div>
+            <span className="select-wrap bg-[#070b14] border-slate-700">
+              <select
+                value={selectedObsId}
+                onChange={(e) => onSelectObservation(e.target.value)}
+                aria-label="Predefined test observations"
+                className="bg-transparent text-slate-100 font-mono text-xs w-full focus:outline-none cursor-pointer"
+              >
+                <optgroup label="🌟 Known Planetary Transit Signals">
+                  <option value="TOI-700">TOI-700 — Calibrated Demo Data (TESS Sector 11-13) [Periodic Dips]</option>
+                  <option value="Kepler-90">Kepler-90 — Real Astronomical Data (Kepler Q1-Q17) [Multi-Planet]</option>
+                  <option value="WASP-12">WASP-12 — Real Astronomical Data (TESS Fast Cadence) [Ultra-Hot Jupiter]</option>
+                </optgroup>
+                <optgroup label="➖ Flat Baseline Control (No Transits)">
+                  <option value="HD-219134">HD 219134 — Real Astronomical Data (Spitzer/Ground) [Flat Quiet Star]</option>
+                </optgroup>
+                <optgroup label="⚡ High Stellar Noise & Flares (Inconclusive)">
+                  <option value="Proxima-Centauri">Proxima Centauri — Real Astronomical Data (TESS) [Active Flare Host]</option>
+                </optgroup>
+                <optgroup label="⚠️ Diagnostic Validation (<15 Cadences)">
+                  <option value="Sparse-Cadence">Sparse Incomplete Test (&lt;15 Points) [Rejection Diagnostic]</option>
+                </optgroup>
+              </select>
+              <ChevronDown size={15} aria-hidden="true" />
+            </span>
+          </label>
+
+          {/* Observation Details & Astronomical Metadata Badges */}
+          {currentObs && (
+            <div className="pt-2 border-t border-slate-800/80 flex flex-wrap items-center justify-between gap-2 text-xs">
+              <div className="flex flex-wrap items-center gap-1.5">
+                {currentObs.dataSourceType === 'REAL' ? (
+                  <Badge variant="cyan" className="text-[10px]">
+                    {currentObs.dataSourceLabel}
+                  </Badge>
+                ) : currentObs.dataSourceType === 'CALIBRATED_DEMO' ? (
+                  <Badge variant="violet" className="text-[10px]">
+                    {currentObs.dataSourceLabel}
+                  </Badge>
+                ) : (
+                  <Badge variant="warning" className="text-[10px]">
+                    {currentObs.dataSourceLabel}
+                  </Badge>
+                )}
+
+                {currentObs.category === 'transit' ? (
+                  <Badge variant="success" className="text-[10px]">
+                    Known Periodic Transit
+                  </Badge>
+                ) : currentObs.category === 'flat' ? (
+                  <Badge variant="outline" className="text-[10px]">
+                    Flat Control Star
+                  </Badge>
+                ) : currentObs.category === 'noisy' ? (
+                  <Badge variant="warning" className="text-[10px]">
+                    High Stellar Noise / Flares
+                  </Badge>
+                ) : (
+                  <Badge variant="outline" className="text-[10px] text-red-400 border-red-500/30">
+                    Incomplete Test Data
+                  </Badge>
+                )}
+              </div>
+
+              <div className="text-[11px] font-mono text-slate-400">
+                {selectedStar.temperature ? `Teff: ${selectedStar.temperature}K` : ''}
+                {selectedStar.stellarRadius ? ` · R*: ${selectedStar.stellarRadius} R☉` : ''}
+                {selectedStar.magnitude ? ` · Mag: ${selectedStar.magnitude}` : ''}
+                {selectedStar.spectralType ? ` · Sp: ${selectedStar.spectralType}` : ''}
+              </div>
+
+              <div className="w-full text-[11px] text-slate-400 italic">
+                {currentObs.scientificContext}
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="target-form">
@@ -200,6 +240,7 @@ function DiscoveryWorkspace({
               />
             </span>
           </label>
+
           <label className="field-group mission-field">
             <span className="field-label">Mission</span>
             <span className="select-wrap">
@@ -216,8 +257,8 @@ function DiscoveryWorkspace({
               <ChevronDown size={15} aria-hidden="true" />
             </span>
           </label>
-          
-          {/* Analyze Star button - enabled only when valid data is available (Requirement 2) */}
+
+          {/* Analyze Star button - enabled only when valid data is available (Requirement 2 & 3) */}
           <button
             className="analyze-button"
             type="button"
@@ -228,7 +269,7 @@ function DiscoveryWorkspace({
             title={
               !workflow.canAnalyze
                 ? workflow.validationReason || 'Valid observation and light curve data required'
-                : 'Run Member 5 BLS algorithmic transit detection'
+                : 'Run client-side BLS algorithmic transit detection'
             }
           >
             {workflow.isAnalyzing ? (
@@ -248,89 +289,36 @@ function DiscoveryWorkspace({
         {/* Quick Sample Observation Presets */}
         <div className="mt-3 pt-3 border-t border-slate-800/80 flex flex-wrap items-center gap-2 text-xs">
           <span className="text-[10px] uppercase font-semibold tracking-wider text-slate-400 mr-1">
-            Quick Load Presets:
+            Quick Presets:
           </span>
-          <button
-            type="button"
-            onClick={() => {
-              const star = MOCK_STARS[0] // TOI-700
-              const points = generateSyntheticLightCurve(3.742, 0.85, 0.0092, 3.25, 25, 30)
-              onSelectPreset(star, points)
-            }}
-            className="px-2.5 py-1 rounded bg-cyan-950/40 hover:bg-cyan-900/60 border border-cyan-500/30 text-cyan-300 text-[11px] font-mono transition-colors cursor-pointer"
-          >
-            TOI-700 (Periodic Transit)
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              const star = MOCK_STARS[1] // Kepler-90
-              const points = generateSyntheticLightCurve(4.25, 1.22, 0.0084, 4.1, 28, 30)
-              onSelectPreset(star, points)
-            }}
-            className="px-2.5 py-1 rounded bg-violet-950/40 hover:bg-violet-900/60 border border-violet-500/30 text-violet-300 text-[11px] font-mono transition-colors cursor-pointer"
-          >
-            Kepler-90 (Confirmed Orbit)
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              const star = {
-                id: 'CTRL-99214',
-                name: 'HD 219134 (Flat Control)',
-                mission: 'Custom' as SpaceMission,
-                ra: 348.32,
-                dec: 57.17,
-                magnitude: 5.57,
-                temperature: 4699,
-                stellarRadius: 0.77,
-                stellarMass: 0.81,
-                observationDate: '2024-01-10',
-                numPoints: 960,
-                description: 'Quiet K-dwarf reference star with no planetary occultations.'
-              }
-              const points = generateFlatLightCurve(20, 30)
-              onSelectPreset(star, points)
-            }}
-            className="px-2.5 py-1 rounded bg-slate-900/80 hover:bg-slate-800 border border-slate-700 text-slate-300 text-[11px] font-mono transition-colors cursor-pointer"
-          >
-            HD 219134 (Flat Baseline)
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              const star = {
-                id: 'FLARE-4081',
-                name: 'Proxima Cen (Noisy Flare Star)',
-                mission: 'Custom' as SpaceMission,
-                ra: 217.42,
-                dec: -62.67,
-                magnitude: 11.13,
-                temperature: 3042,
-                stellarRadius: 0.14,
-                stellarMass: 0.12,
-                observationDate: '2024-02-14',
-                numPoints: 480,
-                description: 'Active flare host exhibiting extreme photometric dispersion.'
-              }
-              const points = generateNoisyLightCurve(10, 30)
-              onSelectPreset(star, points)
-            }}
-            className="px-2.5 py-1 rounded bg-amber-950/40 hover:bg-amber-900/60 border border-amber-500/30 text-amber-300 text-[11px] font-mono transition-colors cursor-pointer"
-          >
-            Proxima (High Noise)
-          </button>
+          {PREDEFINED_OBSERVATIONS.map((obs) => {
+            const isSelected = selectedObsId === obs.id
+            return (
+              <button
+                key={obs.id}
+                type="button"
+                onClick={() => onSelectObservation(obs.id)}
+                className={`px-2.5 py-1 rounded text-[11px] font-mono transition-colors cursor-pointer border ${
+                  isSelected
+                    ? 'bg-cyan-500/20 border-cyan-400 text-cyan-200 shadow-[0_0_10px_rgba(6,182,212,0.2)]'
+                    : 'bg-slate-900/80 hover:bg-slate-850 border-slate-750 text-slate-300'
+                }`}
+              >
+                {obs.id}
+              </button>
+            )
+          })}
         </div>
 
         <div className="target-footnote">
           <span className="footnote-dot" aria-hidden="true" />
-          {lightCurve.length > 0 ? (
+          {lightCurve.length >= 15 ? (
             <span className="text-emerald-400">
-              ✓ {lightCurve.length.toLocaleString()} calibrated photometric cadences ready for analysis.
+              ✓ {lightCurve.length.toLocaleString()} calibrated photometric cadences loaded and ready for analysis.
             </span>
           ) : (
-            <span>
-              Target details loaded in workspace preview. Connect observation cadences or pick a preset above to enable analysis.
+            <span className="text-amber-400">
+              ⚠ {lightCurve.length} cadences available. At least 15 valid photometric cadences required to run the detection algorithm.
             </span>
           )}
         </div>
@@ -347,21 +335,39 @@ function DiscoveryWorkspace({
             </div>
             <div className="chart-status">
               <span />
-              {lightCurve.length ? `${lightCurve.length.toLocaleString()} points` : 'No observation data'}
+              {lightCurve.length ? `${lightCurve.length.toLocaleString()} points · ${selectedStar.mission}` : 'No observation data'}
             </div>
           </div>
           <div className="chart-stage">
-            <div className="chart-y-label">Relative flux</div>
-            <LightCurveChart data={lightCurve} />
-            <div className="chart-x-label">Time (Days)</div>
+            <div className="chart-y-label">Relative flux (F / F₀)</div>
+            <LightCurvePlot
+              data={lightCurve}
+              detectedIntervals={workflow.result?.detectedIntervals}
+              isTransitCandidate={workflow.result?.bestCandidate !== undefined}
+              modelFit={workflow.result?.modelFit}
+              isAnalyzing={workflow.isAnalyzing}
+            />
+            <div className="chart-x-label">Observation Time (Days)</div>
           </div>
-          <div className="chart-footer">
-            <span><i className="legend-dot" /> Stellar flux</span>
-            <span>{lightCurve.length ? `${selectedStar.name || selectedStar.id} time series` : 'Waiting for observation data'}</span>
+          <div className="chart-footer flex items-center justify-between">
+            <span className="flex items-center gap-1.5">
+              <i className="legend-dot" /> Normalized Flux
+            </span>
+            <span>
+              {lightCurve.length
+                ? `${selectedStar.name || selectedStar.id} time series (${lightCurve.length.toLocaleString()} cadences)`
+                : 'Waiting for observation data'}
+            </span>
+            {workflow.result?.bestCandidate && (
+              <span className="text-emerald-400 font-mono text-[11px] flex items-center gap-1">
+                <Sparkles size={13} />
+                {workflow.result.detectedIntervals?.length || 1} transit window(s) identified
+              </span>
+            )}
           </div>
         </section>
 
-        {/* Member 6 Interactive Results Panel (Requirements 1 - 9) */}
+        {/* Member 6 Interactive Results Panel (Requirements 4 - 9) */}
         <AnalysisResultsPanel
           observation={selectedStar}
           lightCurve={lightCurve}
@@ -379,7 +385,7 @@ function DiscoveryWorkspace({
 
       <footer className="workspace-footer">
         <span>TransitLens <span className="footer-separator">/</span> Discovery workspace</span>
-        <span>Member 6 Interactive Analysis & Results Pipeline</span>
+        <span>Algorithmic Transit Detection & Results Pipeline</span>
       </footer>
     </div>
   )
@@ -387,22 +393,32 @@ function DiscoveryWorkspace({
 
 export function App() {
   const [activeTab, setActiveTab] = useState<NavigationTab>('analysis')
-  const [targetId, setTargetId] = useState('TOI-700')
+  const [selectedObsId, setSelectedObsId] = useState<string>('TOI-700')
+  const [targetId, setTargetId] = useState<string>('TOI-700')
   const [mission, setMission] = useState<SpaceMission>('TESS')
-  const [lightCurve, setLightCurve] = useState<LightCurvePoint[]>(() =>
-    generateSyntheticLightCurve(3.742, 0.85, 0.0092, 3.25, 25, 30)
-  )
+  const [lightCurve, setLightCurve] = useState<LightCurvePoint[]>(() => {
+    const initialObs = PREDEFINED_OBSERVATIONS.find((o) => o.id === 'TOI-700')
+    return initialObs ? initialObs.lightCurve : generateSyntheticLightCurve(3.742, 0.85, 0.0092, 3.25, 25, 30)
+  })
   const [results, setResults] = useState<AnalysisResult[]>([])
 
+  const currentObs = useMemo(() => {
+    return PREDEFINED_OBSERVATIONS.find((o) => o.id === selectedObsId)
+  }, [selectedObsId])
+
   const selectedStar: StarObservation = useMemo(() => {
+    if (currentObs) {
+      return currentObs.star
+    }
     return makeWorkspaceStar(targetId, mission)
-  }, [targetId, mission])
+  }, [currentObs, targetId, mission])
 
   const stars = useMemo(() => {
-    return targetId.trim() ? [selectedStar, ...MOCK_STARS.filter((s) => s.id !== selectedStar.id)] : MOCK_STARS
-  }, [selectedStar, targetId])
+    const predefinedStars = PREDEFINED_OBSERVATIONS.map((o) => o.star)
+    return [selectedStar, ...predefinedStars.filter((s) => s.id !== selectedStar.id)]
+  }, [selectedStar])
 
-  // Coordinated workflow hook with Member 5 detection engine
+  // Coordinated workflow hook with client-side detection engine
   const workflow = useAnalysisWorkflow({
     star: selectedStar,
     lightCurve,
@@ -414,30 +430,37 @@ export function App() {
     }
   })
 
-  const handleSelectStar = (star: StarObservation) => {
-    setTargetId(star.id === '—' ? '' : star.name || star.id)
-    setMission(star.mission)
-    workflow.resetAnalysis()
-
-    // Load appropriate light curve for known star
-    if (star.name === 'TOI-700' || star.id === 'TIC-261136679') {
-      setLightCurve(generateSyntheticLightCurve(3.742, 0.85, 0.0092, 3.25, 25, 30))
-    } else if (star.name === 'Kepler-90' || star.id === 'KIC-11442793') {
-      setLightCurve(generateSyntheticLightCurve(4.25, 1.22, 0.0084, 4.1, 28, 30))
-    } else if (star.name === 'Kepler-22' || star.id === 'KIC-10593626') {
-      setLightCurve(generateSyntheticLightCurve(289.86, 4.5, 0.0049, 7.4, 30, 30))
-    } else if (star.name === 'TRAPPIST-1' || star.id === 'TIC-149603524') {
-      setLightCurve(generateSyntheticLightCurve(1.51, 0.42, 0.0071, 0.6, 15, 10))
-    } else {
-      setLightCurve(generateSyntheticLightCurve(3.52, 0.85, 0.0095, 2.4, 20, 30))
+  const handleSelectObservation = (obsId: string) => {
+    setSelectedObsId(obsId)
+    const obs = PREDEFINED_OBSERVATIONS.find((o) => o.id === obsId)
+    if (obs) {
+      setTargetId(obs.star.name || obs.star.id)
+      setMission(obs.star.mission)
+      setLightCurve(obs.lightCurve)
+      workflow.resetAnalysis()
     }
   }
 
-  const handleSelectPreset = (star: StarObservation, points: LightCurvePoint[]) => {
-    setTargetId(star.name || star.id)
-    setMission(star.mission)
-    setLightCurve(points)
-    workflow.resetAnalysis()
+  const celestialObjects = useMemo(() => {
+    return starObservationsToCelestialObjects(stars)
+  }, [stars])
+
+  const handleSelectStar = (star: StarObservation) => {
+    const matched = PREDEFINED_OBSERVATIONS.find(
+      (o) =>
+        o.id.toLowerCase() === star.id.toLowerCase() ||
+        o.star.id.toLowerCase() === star.id.toLowerCase() ||
+        o.star.name.toLowerCase() === star.name.toLowerCase()
+    )
+    if (matched) {
+      handleSelectObservation(matched.id)
+    } else {
+      setSelectedObsId('')
+      setTargetId(star.id === '—' ? '' : star.name || star.id)
+      setMission(star.mission)
+      setLightCurve(generateSyntheticLightCurve(3.52, 0.85, 0.0095, 2.4, 20, 30))
+      workflow.resetAnalysis()
+    }
   }
 
   return (
@@ -451,7 +474,52 @@ export function App() {
       onRunAnalysis={() => workflow.runAnalysis()}
       onResetAnalysis={() => workflow.resetAnalysis()}
       isAnalyzing={workflow.isAnalyzing}
+      canAnalyze={workflow.canAnalyze}
     >
+      {activeTab === 'universe' && (
+        <div className="space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-xl bg-gradient-to-r from-cyan-950/40 via-slate-900/60 to-violet-950/30 border border-slate-800">
+            <div>
+              <div className="flex items-center gap-2">
+                <Compass className="w-5 h-5 text-cyan-400" />
+                <h1 className="text-xl sm:text-2xl font-bold text-white tracking-wide">
+                  3D Universe Explorer
+                </h1>
+                <Badge variant="cyan" className="text-xs">Real-Time WebGL</Badge>
+              </div>
+              <p className="text-xs text-slate-400 mt-1">
+                Explore thousands of stars, distant spiral galaxies, and multi-planet systems in realistic 3D space. Click any star system to target its photometric light curve.
+              </p>
+            </div>
+            {selectedStar && selectedStar.id !== '—' && (
+              <div className="flex items-center gap-2 bg-slate-900/80 px-3 py-2 rounded-lg border border-slate-750">
+                <span className="text-xs text-slate-400">Target:</span>
+                <span className="text-xs font-bold text-cyan-300 font-mono">{selectedStar.name}</span>
+                <button
+                  onClick={() => setActiveTab('analysis')}
+                  className="ml-2 text-xs text-cyan-400 hover:text-cyan-300 hover:underline flex items-center gap-1 cursor-pointer"
+                >
+                  Analyze Light Curve ➔
+                </button>
+              </div>
+            )}
+          </div>
+
+          <div className="h-[74vh] min-h-[580px] w-full">
+            <UniverseScene
+              celestialObjects={celestialObjects}
+              selectedObjectId={selectedStar.id}
+              onSelectObject={(obj) => {
+                if (obj.starObservation) {
+                  handleSelectStar(obj.starObservation)
+                }
+              }}
+              className="h-full w-full"
+            />
+          </div>
+        </div>
+      )}
+
       {activeTab === 'analysis' && (
         <DiscoveryWorkspace
           targetId={targetId}
@@ -461,13 +529,15 @@ export function App() {
           selectedStar={selectedStar}
           lightCurve={lightCurve}
           workflow={workflow}
-          onSelectPreset={handleSelectPreset}
+          selectedObsId={selectedObsId}
+          onSelectObservation={handleSelectObservation}
+          currentObs={currentObs}
         />
       )}
 
       {activeTab === 'stars' && (
         <StarCatalogView
-          stars={MOCK_STARS}
+          stars={stars}
           selectedStarId={selectedStar.id}
           onSelectStar={(star) => {
             handleSelectStar(star)
@@ -479,6 +549,7 @@ export function App() {
       {activeTab === 'upload' && (
         <UploadView
           onLightCurveLoaded={(points, filename) => {
+            setSelectedObsId('')
             setLightCurve(points)
             if (filename) {
               setTargetId(filename.replace(/(\.csv|\.fits|\.json|\.tsv)$/i, ''))

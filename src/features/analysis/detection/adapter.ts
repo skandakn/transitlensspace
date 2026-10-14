@@ -60,6 +60,13 @@ export function detectionOutputToAnalysisResult(
     bestCandidate: events[0],
     foldedPoints: output.foldedPoints,
     modelFit: output.modelFit,
+    detectedIntervals: (output.periodicDips && output.periodicDips.length > 0 ? output.periodicDips : output.detectedDips)?.map((d) => ({
+      startTime: d.startTime,
+      endTime: d.endTime,
+      centerTime: d.centerTime,
+      depthPpm: d.depthPpm,
+      snr: d.snr
+    })),
     notes: output.diagnosticSummary
   }
 }

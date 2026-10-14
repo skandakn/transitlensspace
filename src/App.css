@@ -594,6 +594,13 @@ body {
   background: #101b2a;
 }
 
+.select-wrap select optgroup {
+  color: #59d6e2;
+  background: #070d18;
+  font-weight: 650;
+  font-size: 11px;
+}
+
 .select-wrap > svg {
   pointer-events: none;
   color: #8293a8;

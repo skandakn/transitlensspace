@@ -275,6 +275,44 @@ npm run test
 
 ---
 
+## 🌌 Lead 3D Graphics: Real-Time Universe Engine (`src/features/universe/`)
+
+The 3D Universe Engine powers an immersive, hardware-accelerated 3D universe built with React Three Fiber, Three.js, and `@react-three/drei`. It provides a genuine 3D perspective with depth, lighting, and planetary motion.
+
+### Core Component Architecture
+- **`UniverseScene`** (`src/features/universe/UniverseScene.tsx`):
+  Master 3D Canvas orchestrator. Features OrbitControls with smooth damping and camera flight interpolation to targeted star systems, deep cosmic fog (`#040711`), atmospheric depth, WebGL availability detection with graceful fallback, a cosmic loading state, and an on-screen HUD (quality toggle, orbit lines toggle, star labels toggle, and quick focus buttons).
+- **`Starfield`** (`src/features/universe/Starfield.tsx`):
+  GPU-optimized particle field rendering 9,000+ stars across spherical shells ($r \in [60, 650]$) with realistic astronomical spectral colors (O/B blue giants, solar G dwarfs, M red dwarfs) and gentle universe rotation.
+- **`Nebula` & `DistantGalaxy`** (`src/features/universe/Nebula.tsx`):
+  Procedural cosmic dust clouds with additive blending in cyan, violet, and magenta, alongside logarithmic spiral galaxies with counter-rotating arms.
+- **`StarSystem`** (`src/features/universe/StarSystem.tsx`):
+  Encapsulates a central host star, concentric orbital path rings, and orbiting exoplanet spheres (with optional planetary ring systems, e.g. Kepler-90 h). Features native WebGL billboard sprite labels and interactive click/hover selection.
+- **`CentralStar`** (`src/features/universe/CentralStar.tsx`):
+  Physically inspired star mesh with color derived from stellar effective temperature ($T_{\text{eff}}$), dual-layer additive corona glow with real-time pulsation, and local omnidirectional point lighting.
+- **`celestialAdapter`** (`src/features/universe/celestialAdapter.ts`):
+  Adapter function `starObservationsToCelestialObjects(stars)` that maps catalog `StarObservation` records into 3D `CelestialObject` models without creating a competing object catalog.
+
+### Shared Coordination Contract (`src/types/universe.ts`)
+```typescript
+import type { CelestialObject, UniverseSceneProps } from '@/types';
+
+// The universe scene receives all celestial data through props:
+<UniverseScene
+  celestialObjects={celestialObjects}
+  selectedObjectId={selectedStar.id}
+  onSelectObject={(object) => {
+    // Stable selection callback synced with app state
+    handleSelectStar(object.starObservation);
+  }}
+  showOrbits={true}
+  showLabels={true}
+  quality="high" // or "low" for student laptop 60fps mode
+/>
+```
+
+---
+
 ## 📜 License
 Licensed under the [MIT License](LICENSE).
 NASA Kepler and TESS data courtesy of NASA MAST Archive.
