@@ -2,7 +2,8 @@ import type { StarObservation, SpaceMission } from './index'
 
 /**
  * 3D Universe Explorer - Shared Celestial Types
- * Coordinated across astronomical registry and interactive planetary systems.
+ * Coordinated across astronomical registry, interactive planetary systems,
+ * and NASA Exoplanet Archive scientific records.
  */
 
 export type CelestialObjectType = 'star' | 'planet' | 'system' | 'nebula' | 'galaxy'
@@ -56,7 +57,7 @@ export interface CelestialPlanet {
   // --- Illustrative 3D Scene Visualization Properties (Not to 1:1 cosmic scale) ---
   /** Visual radius for 3D sphere */
   radius: number
-  /** Distance from parent star in 3D scene units */
+  /** Compressed distance from parent star in 3D scene units */
   distanceFromStar: number
   /** Orbital animation angular speed */
   orbitSpeed: number
@@ -100,7 +101,7 @@ export interface CelestialObject {
   planets?: CelestialPlanet[]
   /** Associated space mission */
   mission?: SpaceMission
-  /** Distance from Solar System in parsecs */
+  /** Distance from Solar System in parsecs (null if unmeasured) */
   distanceParsecs?: number | null
   /** Distance from Solar System in light-years */
   distanceLightYears?: number | null
@@ -108,7 +109,7 @@ export interface CelestialObject {
   stellarRadiusSolar?: number | null
   /** Stellar mass in Solar masses M☉ (null if unmeasured) */
   stellarMassSolar?: number | null
-  /** Apparent optical magnitude Vmag */
+  /** Apparent optical magnitude Vmag (null if unmeasured) */
   magnitude?: number | null
   /** Right Ascension in decimal degrees */
   raDegrees?: number | null
@@ -137,11 +138,11 @@ export type SelectedTarget =
 export interface UniverseSceneProps {
   /** Array of celestial objects to render in 3D space */
   celestialObjects: CelestialObject[]
-  /** Currently selected object identifier */
+  /** Currently selected star system identifier */
   selectedObjectId?: string
   /** Currently selected planet identifier (if a planet is focused) */
   selectedPlanetId?: string
-  /** Stable callback fired when user selects a celestial object */
+  /** Stable callback fired when user selects a celestial object or star system */
   onSelectObject?: (object: CelestialObject) => void
   /** Stable callback fired when user selects a specific exoplanet */
   onSelectPlanet?: (planet: CelestialPlanet, parentStar: CelestialObject) => void

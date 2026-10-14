@@ -1,4 +1,4 @@
-import React, { Suspense, useState, useEffect, useRef } from 'react'
+import React, { Suspense, useState, useEffect, useRef, useMemo } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
 import * as THREE from 'three'
@@ -10,12 +10,22 @@ import {
   RotateCcw,
   Layers,
   AlertTriangle,
-  Loader2
+  Search,
+  X,
+  Sun,
+  Globe
 } from 'lucide-react'
 import { Starfield } from './Starfield'
 import { Nebula, DistantGalaxy } from './Nebula'
 import { StarSystem } from './StarSystem'
-import type { UniverseSceneProps, CelestialObject } from '../../types/universe'
+import { CelestialDetailsPanel } from './CelestialDetailsPanel'
+import { searchCelestialCatalog } from '../../data/astronomyData'
+import type {
+  UniverseSceneProps,
+  CelestialObject,
+  CelestialPlanet,
+  SelectedTarget
+} from '../../types/universe'
 
 /**
  * Checks browser WebGL availability
@@ -33,31 +43,51 @@ function checkWebGLSupport(): boolean {
 }
 
 /**
- * Camera Controller that smoothly flies to and focuses on selected star systems
+ * Camera Controller that smoothly flies to and focuses on selected star systems or planets
  */
 function CameraController({
-  selectedObject,
-  initialPosition = [0, 45, 120]
+  targetPosition,
+  initialPosition = [0, 45, 120],
+  resetTrigger = 0
 }: {
-  selectedObject?: CelestialObject
+  targetPosition?: [number, number, number] | null
   initialPosition?: [number, number, number]
+  resetTrigger?: number
 }) {
   const { camera } = useThree()
   const controlsRef = useRef<any>(null)
   const targetLookAt = useRef(new THREE.Vector3(0, 0, 0))
+  const isResetting = useRef(false)
 
   useEffect(() => {
-    if (selectedObject) {
-      const [x, y, z] = selectedObject.position
-      targetLookAt.current.set(x, y, z)
+    if (resetTrigger > 0) {
+      targetLookAt.current.set(0, 0, 0)
+      isResetting.current = true
     }
-  }, [selectedObject])
+  }, [resetTrigger])
+
+  useEffect(() => {
+    if (targetPosition) {
+      isResetting.current = false
+      targetLookAt.current.set(...targetPosition)
+    }
+  }, [targetPosition])
 
   useFrame((_, delta) => {
     if (!controlsRef.current) return
 
-    // Smoothly interpolate target
+    // Smoothly interpolate look-at target
     controlsRef.current.target.lerp(targetLookAt.current, delta * 3.5)
+
+    // Smoothly restore initial camera position on reset
+    if (isResetting.current) {
+      const initVec = new THREE.Vector3(...initialPosition)
+      camera.position.lerp(initVec, delta * 2.5)
+      if (camera.position.distanceTo(initVec) < 0.5) {
+        isResetting.current = false
+      }
+    }
+
     controlsRef.current.update()
   })
 
@@ -113,16 +143,23 @@ function WebGLFallback() {
   )
 }
 
+export interface ExtendedUniverseSceneProps extends UniverseSceneProps {
+  onAnalyzeLightCurve?: (star: CelestialObject) => void
+}
+
 /**
  * UniverseScene: The master 3D universe canvas for TransitLens.
  * 
  * Delivers an immersive, real-time cosmic environment with thousands of instanced stars,
- * volumetric nebulae, distant spiral galaxies, and interactive star systems.
+ * volumetric nebulae, distant spiral galaxies, interactive star systems, and verified
+ * astronomical data inspection.
  */
 export function UniverseScene({
   celestialObjects,
   selectedObjectId,
+  selectedPlanetId: controlledPlanetId,
   onSelectObject,
+  onSelectPlanet,
   hoveredObjectId,
   onHoverObject,
   showOrbits: initialShowOrbits = true,
@@ -130,19 +167,102 @@ export function UniverseScene({
   enableMotion: initialEnableMotion = true,
   quality: initialQuality = 'high',
   className = '',
-  initialCameraPosition = [0, 40, 110]
-}: UniverseSceneProps) {
+  initialCameraPosition = [0, 40, 110],
+  onAnalyzeLightCurve
+}: ExtendedUniverseSceneProps) {
   const [hasWebGL, setHasWebGL] = useState<boolean>(true)
   const [showOrbits, setShowOrbits] = useState(initialShowOrbits)
   const [showLabels, setShowLabels] = useState(initialShowLabels)
   const [enableMotion, setEnableMotion] = useState(initialEnableMotion)
   const [quality, setQuality] = useState<'low' | 'high'>(initialQuality === 'low' ? 'low' : 'high')
 
+  // Search and Camera Focus State
+  const [searchQuery, setSearchQuery] = useState('')
+  const [isSearchOpen, setIsSearchOpen] = useState(false)
+  const [resetTrigger, setResetTrigger] = useState(0)
+
+  // Target selection state
+  const [activeTarget, setActiveTarget] = useState<SelectedTarget>(null)
+  const [selectedPlanetId, setSelectedPlanetId] = useState<string | undefined>(controlledPlanetId)
+
+  const searchContainerRef = useRef<HTMLDivElement>(null)
+
   useEffect(() => {
     setHasWebGL(checkWebGLSupport())
   }, [])
 
-  const selectedObject = celestialObjects.find((obj) => obj.id === selectedObjectId)
+  // Synchronize incoming controlled target
+  useEffect(() => {
+    if (selectedObjectId) {
+      const star = celestialObjects.find((s) => s.id === selectedObjectId)
+      if (star) {
+        if (controlledPlanetId && star.planets) {
+          const planet = star.planets.find((p) => p.id === controlledPlanetId)
+          if (planet) {
+            setActiveTarget({ type: 'planet', planet, parentStar: star })
+            setSelectedPlanetId(planet.id)
+            return
+          }
+        }
+        setActiveTarget({ type: 'star', star })
+        setSelectedPlanetId(undefined)
+      }
+    }
+  }, [selectedObjectId, controlledPlanetId, celestialObjects])
+
+  // Handle outside click to close search dropdown
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (searchContainerRef.current && !searchContainerRef.current.contains(e.target as Node)) {
+        setIsSearchOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  // Catalog search results
+  const searchResults = useMemo(() => {
+    if (!searchQuery.trim()) return []
+    return searchCelestialCatalog(searchQuery)
+  }, [searchQuery])
+
+  // Target camera focus position
+  const targetCameraPos = useMemo<[number, number, number] | null>(() => {
+    if (!activeTarget) return null
+    if (activeTarget.type === 'star') {
+      return activeTarget.star.position
+    }
+    return activeTarget.parentStar.position
+  }, [activeTarget])
+
+  const handleSelectStar = (star: CelestialObject) => {
+    setActiveTarget({ type: 'star', star })
+    setSelectedPlanetId(undefined)
+    onSelectObject?.(star)
+  }
+
+  const handleSelectPlanet = (planet: CelestialPlanet, parentStar: CelestialObject) => {
+    setActiveTarget({ type: 'planet', planet, parentStar })
+    setSelectedPlanetId(planet.id)
+    onSelectPlanet?.(planet, parentStar)
+  }
+
+  const handleResetCamera = () => {
+    setActiveTarget(null)
+    setSelectedPlanetId(undefined)
+    setResetTrigger((prev) => prev + 1)
+  }
+
+  const handleSearchResultClick = (result: ReturnType<typeof searchCelestialCatalog>[number]) => {
+    if (result.type === 'star') {
+      handleSelectStar(result.star)
+    } else if (result.planet) {
+      handleSelectPlanet(result.planet, result.star)
+    }
+    setIsSearchOpen(false)
+    setSearchQuery('')
+  }
 
   if (!hasWebGL) {
     return <WebGLFallback />
@@ -175,8 +295,9 @@ export function UniverseScene({
 
           {/* Interactive Camera Controller */}
           <CameraController
-            selectedObject={selectedObject}
+            targetPosition={targetCameraPos}
             initialPosition={initialCameraPosition}
+            resetTrigger={resetTrigger}
           />
 
           {/* 1. Large 3D Starfield (Thousands of Stars) */}
@@ -206,38 +327,127 @@ export function UniverseScene({
           <DistantGalaxy position={[220, 80, -260]} scale={40} />
           <DistantGalaxy position={[-200, 60, -220]} scale={32} colorArms="#38bdf8" />
 
-          {/* 4. Multiple Visually Separated Star Systems */}
-          {celestialObjects.map((system) => (
-            <StarSystem
-              key={system.id}
-              system={system}
-              isSelected={system.id === selectedObjectId}
-              isHovered={system.id === hoveredObjectId}
-              onSelect={onSelectObject}
-              onHover={onHoverObject}
-              showOrbits={showOrbits}
-              showLabels={showLabels}
-              enableMotion={enableMotion}
-            />
-          ))}
+          {/* 4. Multiple Visually Separated Star Systems with Clickable Planets */}
+          {celestialObjects.map((system) => {
+            const isSystemSelected =
+              activeTarget?.type === 'star'
+                ? activeTarget.star.id === system.id
+                : activeTarget?.parentStar.id === system.id
+
+            return (
+              <StarSystem
+                key={system.id}
+                system={system}
+                isSelected={isSystemSelected}
+                isHovered={system.id === hoveredObjectId}
+                selectedPlanetId={selectedPlanetId}
+                onSelect={handleSelectStar}
+                onSelectPlanet={handleSelectPlanet}
+                onHover={onHoverObject}
+                showOrbits={showOrbits}
+                showLabels={showLabels}
+                enableMotion={enableMotion}
+              />
+            )
+          })}
         </Canvas>
       </Suspense>
 
       {/* Floating 3D HUD Toolbar */}
-      <div className="absolute top-4 left-4 z-20 flex flex-wrap items-center gap-2">
+      <div className="absolute top-4 left-4 z-20 flex flex-wrap items-center gap-2 max-w-[calc(100%-2rem)]">
         <div className="px-3 py-1.5 rounded-lg bg-[#070b14]/90 border border-slate-750 backdrop-blur-md flex items-center gap-2 text-xs font-mono text-cyan-300">
-          <Compass className="w-3.5 h-3.5 text-cyan-400 animate-spin-slow" />
-          <span>Real-Time 3D Universe</span>
+          <Compass className="w-3.5 h-3.5 text-cyan-400" />
+          <span className="hidden sm:inline">3D Celestial Universe</span>
         </div>
 
-        {/* Quality Mode Toggle (Student Laptop Optimization) */}
+        {/* Catalog Search Input & Results Dropdown */}
+        <div ref={searchContainerRef} className="relative">
+          <div className="flex items-center rounded-lg bg-[#070b14]/90 border border-slate-700/80 px-2.5 py-1 backdrop-blur-md focus-within:border-cyan-400 transition-colors">
+            <Search className="w-3.5 h-3.5 text-slate-400 mr-2 shrink-0" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => {
+                setSearchQuery(e.target.value)
+                setIsSearchOpen(true)
+              }}
+              onFocus={() => setIsSearchOpen(true)}
+              placeholder="Search catalog (e.g. TOI-700, Kepler-90)..."
+              className="bg-transparent text-xs text-white placeholder-slate-400 focus:outline-none w-44 sm:w-56 font-mono"
+              aria-label="Search celestial catalog"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => {
+                  setSearchQuery('')
+                  setIsSearchOpen(false)
+                }}
+                className="text-slate-400 hover:text-white ml-1 cursor-pointer"
+                aria-label="Clear search"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            )}
+          </div>
+
+          {/* Dropdown Menu */}
+          {isSearchOpen && searchResults.length > 0 && (
+            <div className="absolute left-0 mt-1 w-72 max-h-64 overflow-y-auto rounded-xl bg-[#070b14]/98 border border-cyan-800/60 shadow-2xl backdrop-blur-xl z-50 divide-y divide-slate-800/60 font-mono text-xs">
+              {searchResults.map((item) => (
+                <div
+                  key={`${item.type}-${item.id}`}
+                  onClick={() => handleSearchResultClick(item)}
+                  className="p-2.5 hover:bg-slate-800/70 cursor-pointer flex items-center justify-between transition-colors group"
+                >
+                  <div className="flex items-center gap-2 truncate">
+                    {item.type === 'star' ? (
+                      <Sun className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                    ) : (
+                      <Globe className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                    )}
+                    <div className="truncate">
+                      <span className="font-bold text-white group-hover:text-cyan-300 block truncate">
+                        {item.name}
+                      </span>
+                      <span className="text-[10px] text-slate-400">
+                        {item.type === 'star'
+                          ? `${item.star.spectralType || 'Star'} · ${item.star.planets?.length || 0} Planets`
+                          : `Host: ${item.hostStarName}`}
+                      </span>
+                    </div>
+                  </div>
+                  <span className={`text-[9px] uppercase px-1.5 py-0.5 rounded font-mono shrink-0 ml-2 ${
+                    item.type === 'star'
+                      ? 'bg-amber-500/10 text-amber-300 border border-amber-500/20'
+                      : 'bg-cyan-500/10 text-cyan-300 border border-cyan-500/20'
+                  }`}>
+                    {item.type}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Reset Camera View Button */}
+        <button
+          onClick={handleResetCamera}
+          className="px-2.5 py-1.5 rounded-lg bg-[#070b14]/85 hover:bg-slate-800/80 border border-slate-750 text-slate-300 hover:text-cyan-300 text-xs font-mono flex items-center gap-1.5 transition-colors cursor-pointer"
+          title="Reset Camera View to Default"
+          aria-label="Reset Camera View"
+        >
+          <RotateCcw className="w-3 h-3 text-cyan-400" />
+          <span className="hidden sm:inline">Reset View</span>
+        </button>
+
+        {/* Quality Mode Toggle */}
         <button
           onClick={() => setQuality(quality === 'high' ? 'low' : 'high')}
           className="px-2.5 py-1.5 rounded-lg bg-[#070b14]/85 hover:bg-slate-800/80 border border-slate-750 text-slate-300 text-xs font-mono flex items-center gap-1.5 transition-colors cursor-pointer"
           title="Toggle high performance mode for student laptops"
         >
           <Sliders className="w-3 h-3 text-cyan-400" />
-          <span>{quality === 'high' ? 'Quality: High' : 'Mode: Eco 60fps'}</span>
+          <span className="hidden md:inline">{quality === 'high' ? 'High' : 'Eco'}</span>
         </button>
 
         {/* Orbit Lines Toggle */}
@@ -248,9 +458,10 @@ export function UniverseScene({
               ? 'bg-cyan-950/70 border-cyan-500/50 text-cyan-300'
               : 'bg-[#070b14]/85 border-slate-750 text-slate-400'
           }`}
+          title="Toggle planetary orbit lines"
         >
           <Layers className="w-3 h-3" />
-          <span>Orbits</span>
+          <span className="hidden sm:inline">Orbits</span>
         </button>
 
         {/* Star Labels Toggle */}
@@ -261,9 +472,10 @@ export function UniverseScene({
               ? 'bg-violet-950/70 border-violet-500/50 text-violet-300'
               : 'bg-[#070b14]/85 border-slate-750 text-slate-400'
           }`}
+          title="Toggle star billboard labels"
         >
           <Eye className="w-3 h-3" />
-          <span>Labels</span>
+          <span className="hidden sm:inline">Labels</span>
         </button>
       </div>
 
@@ -274,11 +486,15 @@ export function UniverseScene({
             Focus System:
           </span>
           {celestialObjects.map((obj) => {
-            const isSelected = obj.id === selectedObjectId
+            const isSelected =
+              activeTarget?.type === 'star'
+                ? activeTarget.star.id === obj.id
+                : activeTarget?.parentStar.id === obj.id
+
             return (
               <button
                 key={obj.id}
-                onClick={() => onSelectObject?.(obj)}
+                onClick={() => handleSelectStar(obj)}
                 className={`px-2.5 py-1 rounded-md text-xs font-mono border transition-all cursor-pointer ${
                   isSelected
                     ? 'bg-cyan-500 text-slate-950 font-bold border-cyan-400 shadow-[0_0_12px_rgba(6,182,212,0.4)]'
@@ -292,9 +508,22 @@ export function UniverseScene({
         </div>
 
         <div className="text-[10px] font-mono text-slate-400 bg-[#070b14]/80 px-2 py-1 rounded border border-slate-800 hidden md:block">
-          Left Click + Drag: Rotate · Scroll: Zoom · Right Click: Pan
+          Click Star/Planet: Inspect · Drag: Rotate · Scroll: Zoom
         </div>
       </div>
+
+      {/* Interactive Celestial Details Panel */}
+      <CelestialDetailsPanel
+        target={activeTarget}
+        onClose={() => {
+          setActiveTarget(null)
+          setSelectedPlanetId(undefined)
+        }}
+        onSelectStar={handleSelectStar}
+        onSelectPlanet={handleSelectPlanet}
+        onAnalyzeLightCurve={onAnalyzeLightCurve}
+        onResetView={handleResetCamera}
+      />
     </div>
   )
 }

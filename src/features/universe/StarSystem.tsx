@@ -8,27 +8,44 @@ export interface StarSystemProps {
   system: CelestialObject
   isSelected?: boolean
   isHovered?: boolean
+  selectedPlanetId?: string
   onSelect?: (system: CelestialObject) => void
+  onSelectPlanet?: (planet: CelestialPlanet, parentStar: CelestialObject) => void
   onHover?: (system: CelestialObject | null) => void
   showOrbits?: boolean
   showLabels?: boolean
   enableMotion?: boolean
 }
 
+interface PlanetOrbiterProps {
+  planet: CelestialPlanet
+  starColor?: string
+  enableMotion?: boolean
+  isSelected?: boolean
+  onSelectPlanet?: (planet: CelestialPlanet) => void
+}
+
 /**
- * Individual Exoplanet Orbiting Mesh
+ * Individual Exoplanet Orbiting Mesh with click interactions
  */
 function PlanetOrbiter({
   planet,
-  starColor,
-  enableMotion = true
-}: {
-  planet: CelestialPlanet
-  starColor: string
-  enableMotion?: boolean
-}) {
+  enableMotion = true,
+  isSelected = false,
+  onSelectPlanet
+}: PlanetOrbiterProps) {
   const planetRef = useRef<THREE.Group>(null)
-  const angleRef = useRef<number>(Math.random() * Math.PI * 2)
+  const angleRef = useRef<number>(0)
+  const [isHovered, setIsHovered] = useState(false)
+
+  // Initialize deterministic starting phase based on planet distance/name
+  React.useEffect(() => {
+    let hash = 0
+    for (let i = 0; i < planet.name.length; i++) {
+      hash = (hash * 31 + planet.name.charCodeAt(i)) % 1000
+    }
+    angleRef.current = (hash / 1000) * Math.PI * 2
+  }, [planet.name])
 
   useFrame((_, delta) => {
     if (!enableMotion || !planetRef.current) return
@@ -45,26 +62,57 @@ function PlanetOrbiter({
 
   return (
     <group ref={planetRef}>
-      {/* Planet Sphere */}
-      <mesh castShadow receiveShadow>
-        <sphereGeometry args={[planet.radius, 20, 20]} />
+      {/* Click and hover target mesh */}
+      <mesh
+        castShadow
+        receiveShadow
+        onClick={(e) => {
+          e.stopPropagation()
+          onSelectPlanet?.(planet)
+        }}
+        onPointerOver={(e) => {
+          e.stopPropagation()
+          setIsHovered(true)
+          document.body.style.cursor = 'pointer'
+        }}
+        onPointerOut={() => {
+          setIsHovered(false)
+          document.body.style.cursor = 'auto'
+        }}
+      >
+        <sphereGeometry args={[planet.radius * (isHovered ? 1.15 : 1), 22, 22]} />
         <meshStandardMaterial
           color={planet.color}
-          roughness={0.65}
-          metalness={0.15}
+          roughness={0.6}
+          metalness={0.2}
+          emissive={isSelected ? '#10b981' : isHovered ? '#38bdf8' : '#000000'}
+          emissiveIntensity={isSelected ? 0.4 : isHovered ? 0.25 : 0}
         />
       </mesh>
 
       {/* Atmospheric Rim Glow */}
       {planet.atmosphereColor && (
         <mesh>
-          <sphereGeometry args={[planet.radius * 1.15, 16, 16]} />
+          <sphereGeometry args={[planet.radius * 1.18, 16, 16]} />
           <meshBasicMaterial
             color={planet.atmosphereColor}
             transparent
-            opacity={0.3}
+            opacity={0.35}
             blending={THREE.AdditiveBlending}
             side={THREE.BackSide}
+          />
+        </mesh>
+      )}
+
+      {/* Selected Target Ring for Planet */}
+      {(isSelected || isHovered) && (
+        <mesh rotation={[Math.PI / 2, 0, 0]}>
+          <ringGeometry args={[planet.radius * 1.6, planet.radius * 1.85, 32]} />
+          <meshBasicMaterial
+            color={isSelected ? '#34d399' : '#38bdf8'}
+            side={THREE.DoubleSide}
+            transparent
+            opacity={0.85}
           />
         </mesh>
       )}
@@ -221,7 +269,9 @@ export function StarSystem({
   system,
   isSelected = false,
   isHovered = false,
+  selectedPlanetId,
   onSelect,
+  onSelectPlanet,
   onHover,
   showOrbits = true,
   showLabels = true,
@@ -288,6 +338,8 @@ export function StarSystem({
             planet={planet}
             starColor={system.color}
             enableMotion={enableMotion}
+            isSelected={planet.id === selectedPlanetId}
+            onSelectPlanet={(p) => onSelectPlanet?.(p, system)}
           />
         </React.Fragment>
       ))}

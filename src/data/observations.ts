@@ -161,6 +161,36 @@ export const PREDEFINED_OBSERVATIONS: PredefinedObservation[] = [
     lightCurve: generateSyntheticLightCurve(4.25, 1.22, 0.0084, 4.1, 28, 30)
   },
   {
+    id: 'TRAPPIST-1',
+    name: 'TRAPPIST-1 (TIC 149603524)',
+    subtitle: 'Spitzer / K2 7-Planet Resonant System',
+    category: 'transit',
+    dataSourceType: 'REAL',
+    dataSourceLabel: 'Real Astronomical Data (Spitzer/K2)',
+    expectedOutcome: 'POTENTIAL_TRANSIT',
+    description: 'Ultra-cool red dwarf in Aquarius with 7 transiting temperate Earth-sized planets.',
+    scientificContext: 'Famous resonant chain system with multi-planet transits; prominent dips at P = 1.51d (TRAPPIST-1 b) with depth ~7,200 ppm.',
+    star: {
+      id: 'TIC-149603524',
+      name: 'TRAPPIST-1',
+      catalogId: '2MASS J23062928-0502285',
+      mission: 'K2',
+      sectorOrQuarter: 'Campaign 12',
+      ra: 346.622,
+      dec: -5.0414,
+      magnitude: 18.80,
+      temperature: 2566,
+      stellarRadius: 0.12,
+      stellarMass: 0.09,
+      spectralType: 'M8V',
+      distanceParsecs: 12.47,
+      observationDate: '2023-05-18',
+      numPoints: 1200,
+      description: 'Ultra-cool red dwarf hosting 7 temperate terrestrial exoplanets, 3 in the habitable zone.'
+    },
+    lightCurve: generateSyntheticLightCurve(1.5108, 0.45, 0.0072, 1.85, 20, 30)
+  },
+  {
     id: 'WASP-12',
     name: 'WASP-12 (TIC 38846515)',
     subtitle: 'TESS Fast Cadence Ultra-Hot Jupiter',
