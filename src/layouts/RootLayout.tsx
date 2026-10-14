@@ -14,6 +14,7 @@ export interface RootLayoutProps {
   onRunAnalysis: () => void
   onResetAnalysis: () => void
   isAnalyzing: boolean
+  canAnalyze?: boolean
 }
 
 export function RootLayout({
@@ -26,7 +27,8 @@ export function RootLayout({
   analysisStatus,
   onRunAnalysis,
   onResetAnalysis,
-  isAnalyzing
+  isAnalyzing,
+  canAnalyze = true
 }: RootLayoutProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
@@ -66,6 +68,7 @@ export function RootLayout({
           onRunAnalysis={onRunAnalysis}
           onResetAnalysis={onResetAnalysis}
           isAnalyzing={isAnalyzing}
+          canAnalyze={canAnalyze}
         />
 
         <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto space-y-6">

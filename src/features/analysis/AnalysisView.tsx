@@ -3,29 +3,23 @@ import {
   Activity,
   Layers,
   Sparkles,
-  Telescope,
-  Compass,
-  Flame,
-  CheckCircle2,
-  AlertCircle
+  Telescope
 } from 'lucide-react'
 import type {
   StarObservation,
   LightCurvePoint,
   AnalysisResult,
-  TransitEvent,
   AnalysisParameters
 } from '../../types'
 import { MetricCard } from '../../components/ui/MetricCard'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../../components/ui/Card'
 import { Badge } from '../../components/ui/Badge'
-import { Button } from '../../components/ui/Button'
 import { LightCurveViewer } from './LightCurveViewer'
 import { PeriodFoldPlot } from './PeriodFoldPlot'
 import { AnalysisControls } from './AnalysisControls'
+import { AnalysisResultsPanel } from './AnalysisResultsPanel'
 import {
   formatPeriod,
-  formatDepth,
   formatRadius,
   formatTemperature,
   formatStellarRadius
@@ -157,6 +151,18 @@ export function AnalysisView({
           </div>
         </div>
       </div>
+
+      {/* Member 6 Analysis Results Panel & Measurement Evidence */}
+      <AnalysisResultsPanel
+        observation={star}
+        lightCurve={lightCurve}
+        status={result.status}
+        result={result}
+        isAnalyzing={isAnalyzing}
+        canAnalyze={!isAnalyzing && lightCurve.length >= 15}
+        onRunAnalysis={onRunAnalysis}
+        onResetAnalysis={() => {}}
+      />
 
       {/* Transit Candidates Summary Table */}
       <Card className="border-slate-800/80">

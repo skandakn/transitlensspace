@@ -209,6 +209,110 @@ export interface AnalysisResult {
 
 ---
 
+## 🔬 Member 5: Transit Detection Engine (`src/features/analysis/detection/`)
+
+Member 5 is responsible for the pure, deterministic, explainable browser-side transit detection pipeline. The pipeline operates strictly on supplied photometric measurements with zero dependence on React UI components or predefined star names.
+
+### Primary Function Interface
+```typescript
+import { detectTransits, detectionOutputToAnalysisResult } from '@/features/analysis/detection';
+
+// 1. Execute analysis pipeline on any time-series array
+const result = detectTransits(lightCurvePoints, {
+  minPeriodDays: 0.5,
+  maxPeriodDays: 30.0,
+  periodGridSteps: 2000,
+  minSnrThreshold: 7.1
+});
+
+// 2. Integration Lead Adapter: convert to shared AnalysisResult if needed
+const analysisResult = detectionOutputToAnalysisResult(result, targetStar);
+```
+
+### Deterministic Pipeline Phases
+1. **Validation & Chronological Sorting** (`validation.ts`):
+   - Validates that time and flux are finite, non-NaN positive numbers.
+   - Merges duplicate timestamps and sorts strictly ascending.
+   - Enforces a minimum sample of $\ge 15$ points.
+2. **Robust Baseline & Noise Floor** (`normalization.ts`):
+   - Calculates robust median flux and Median Absolute Deviation (MAD):  
+     $$\sigma_{\text{MAD}} = 1.4826 \times \text{median}(|f_i - \text{median}(f)|)$$
+   - Normalizes flux around $1.0$.
+   - Rejects upward stellar flares ($> 4.5\sigma$) and extreme single-point downward cosmic rays ($> 12\sigma$), while preserving contiguous transit dips.
+3. **Candidate Dip Detection** (`dipDetector.ts`):
+   - Groups consecutive points falling below threshold ($f_{\text{thresh}} = 1.0 - 2.2\sigma$).
+   - Computes flux-deficit weighted center time: $t_0 = \frac{\sum t_i (1 - f_i)}{\sum (1 - f_i)}$.
+   - Calculates individual dip duration, depth fraction/ppm, and SNR.
+4. **Periodic Pattern Search** (`periodSearch.ts`):
+   - Computes pairwise dip interval spacings $(\Delta t_{ij} = t_j - t_i)$ to seed candidate periods.
+   - Executes Box Least Squares (BLS) phase-folding across frequency grid to locate the global peak power:
+     $$\text{Power}(P) = \frac{\delta^2 \cdot N_{\text{in}} N_{\text{out}}}{N_{\text{total}}}$$
+   - Validates candidate ephemeris: $t_n = t_0 + n P \pm \text{tolerance}$.
+5. **Explainable Confidence & Quality Score** (`confidenceScorer.ts`):
+   - **Repetition Score (30 pts)**: Based on count of periodic transits ($\ge 3$ dips = 30 pts).
+   - **Folded SNR Score (35 pts)**: Scaled from folded SNR ($> 15\sigma$ = 35 pts, $> 7.1\sigma$ = 20 pts).
+   - **Phase Coverage Score (20 pts)**: Evaluates in-transit point density.
+   - **Even/Odd Parity Score (15 pts)**: Compares depths of alternating transits:
+     $$R = \frac{\min(d_{\text{even}}, d_{\text{odd}})}{\max(d_{\text{even}}, d_{\text{odd}})}$$
+   - **Eclipsing Binary Penalty (-25 pts)**: If $R < 0.50$, flags alternating primary/secondary stellar eclipses $\to$ `FALSE_POSITIVE`.
+   - Produces a step-by-step mathematical explanation string returned with the output.
+
+### Scientific Limitations & Thresholds
+- **No Automatic Confirmation**: Per exoplanet validation standards, web-side photometric analysis establishes candidates (`CANDIDATE`). True planetary confirmation requires high-resolution Doppler radial velocity or space-based multi-color follow-up. Candidates are never labeled as `CONFIRMED`.
+- **Flat Curve Handling**: Returns explicit `status: 'inconclusive'` and `disposition: 'INCONCLUSIVE'` with zero confidence score when no points drop below $2.2\sigma$.
+- **Noisy & Insufficient Data**: Datasets with high noise floors ($\text{SNR} < 6.5\sigma$) or $< 15$ points produce explicit inconclusive diagnostics.
+
+### Unit Test Suite (`npm run test`)
+Run the 8 automated Vitest unit tests:
+```bash
+npm run test
+```
+- ✅ **Repeating-Dip Dataset**: Recovers period within $5\%$ tolerance, finds dips, SNR $> 7.0$, assigns `CANDIDATE`.
+- ✅ **Flat Curve**: Returns inconclusive result with 0 score and explicit flat curve reason.
+- ✅ **Noisy Data**: Handles heavy noise floor ($\sigma = 0.025$) without generating false alarms.
+- ✅ **Invalid & Edge-Case Input**: 4 test cases verifying graceful handling of `null`, empty arrays, $< 15$ points, and corrupted NaNs.
+- ✅ **Eclipsing Binary Discrimination**: Detects alternating depth disparity and assigns `FALSE_POSITIVE`.
+
+---
+
+## 🌌 Lead 3D Graphics: Real-Time Universe Engine (`src/features/universe/`)
+
+The 3D Universe Engine powers an immersive, hardware-accelerated 3D universe built with React Three Fiber, Three.js, and `@react-three/drei`. It provides a genuine 3D perspective with depth, lighting, and planetary motion.
+
+### Core Component Architecture
+- **`UniverseScene`** (`src/features/universe/UniverseScene.tsx`):
+  Master 3D Canvas orchestrator. Features OrbitControls with smooth damping and camera flight interpolation to targeted star systems, deep cosmic fog (`#040711`), atmospheric depth, WebGL availability detection with graceful fallback, a cosmic loading state, and an on-screen HUD (quality toggle, orbit lines toggle, star labels toggle, and quick focus buttons).
+- **`Starfield`** (`src/features/universe/Starfield.tsx`):
+  GPU-optimized particle field rendering 9,000+ stars across spherical shells ($r \in [60, 650]$) with realistic astronomical spectral colors (O/B blue giants, solar G dwarfs, M red dwarfs) and gentle universe rotation.
+- **`Nebula` & `DistantGalaxy`** (`src/features/universe/Nebula.tsx`):
+  Procedural cosmic dust clouds with additive blending in cyan, violet, and magenta, alongside logarithmic spiral galaxies with counter-rotating arms.
+- **`StarSystem`** (`src/features/universe/StarSystem.tsx`):
+  Encapsulates a central host star, concentric orbital path rings, and orbiting exoplanet spheres (with optional planetary ring systems, e.g. Kepler-90 h). Features native WebGL billboard sprite labels and interactive click/hover selection.
+- **`CentralStar`** (`src/features/universe/CentralStar.tsx`):
+  Physically inspired star mesh with color derived from stellar effective temperature ($T_{\text{eff}}$), dual-layer additive corona glow with real-time pulsation, and local omnidirectional point lighting.
+- **`celestialAdapter`** (`src/features/universe/celestialAdapter.ts`):
+  Adapter function `starObservationsToCelestialObjects(stars)` that maps catalog `StarObservation` records into 3D `CelestialObject` models without creating a competing object catalog.
+
+### Shared Coordination Contract (`src/types/universe.ts`)
+```typescript
+import type { CelestialObject, UniverseSceneProps } from '@/types';
+
+// The universe scene receives all celestial data through props:
+<UniverseScene
+  celestialObjects={celestialObjects}
+  selectedObjectId={selectedStar.id}
+  onSelectObject={(object) => {
+    // Stable selection callback synced with app state
+    handleSelectStar(object.starObservation);
+  }}
+  showOrbits={true}
+  showLabels={true}
+  quality="high" // or "low" for student laptop 60fps mode
+/>
+```
+
+---
+
 ## 📜 License
 Licensed under the [MIT License](LICENSE).
 NASA Kepler and TESS data courtesy of NASA MAST Archive.

@@ -5,8 +5,7 @@ import {
   RotateCcw,
   Sparkles,
   Telescope,
-  ChevronDown,
-  Activity
+  ChevronDown
 } from 'lucide-react'
 import { GithubIcon } from './icons/GithubIcon'
 import type { StarObservation, AnalysisStatus } from '../types'
@@ -23,6 +22,7 @@ export interface TopBarProps {
   onRunAnalysis: () => void
   onResetAnalysis: () => void
   isAnalyzing: boolean
+  canAnalyze?: boolean
 }
 
 export function TopBar({
@@ -33,7 +33,8 @@ export function TopBar({
   analysisStatus,
   onRunAnalysis,
   onResetAnalysis,
-  isAnalyzing
+  isAnalyzing,
+  canAnalyze = true
 }: TopBarProps) {
   const [dropdownOpen, setDropdownOpen] = React.useState(false)
 
@@ -134,7 +135,9 @@ export function TopBar({
           size="sm"
           isLoading={isAnalyzing}
           onClick={onRunAnalysis}
+          disabled={!canAnalyze || isAnalyzing}
           leftIcon={<Play className="w-3.5 h-3.5 fill-current" />}
+          title={!canAnalyze ? 'Valid observation data required before analysis' : 'Run transit detection algorithm'}
         >
           {isAnalyzing ? 'Scanning Period Grid...' : 'Run Detection'}
         </Button>
