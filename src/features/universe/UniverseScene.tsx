@@ -167,11 +167,7 @@ export function UniverseScene({
   }, [selectedObjectId, controlledPlanetId])
 
   // Derive active celestial target (prioritizes controlled props, then resolves ID/name robustly)
-  const activeTarget: SelectedTarget | null = useMemo(() => {
-    if (controlledTarget) {
-      return controlledTarget
-    }
-
+  const activeTarget: SelectedTarget = useMemo(() => {
     if (selectedObjectId) {
       const selClean = selectedObjectId.toLowerCase().replace(/[^a-z0-9]/g, '')
       const star = celestialObjects.find((s) => {
@@ -209,7 +205,7 @@ export function UniverseScene({
     }
 
     return null
-  }, [controlledTarget, selectedObjectId, controlledPlanetId, userSelectedPlanetId, userSelectedTarget, celestialObjects])
+  }, [selectedObjectId, controlledPlanetId, userSelectedPlanetId, userSelectedTarget, celestialObjects])
 
   const selectedPlanetId = userSelectedPlanetId !== undefined ? userSelectedPlanetId : controlledPlanetId
 

@@ -129,16 +129,25 @@ export function ExplorerHUD({
   const pointerY = primaryHand ? `${(primaryHand.indexTip.y * 100).toFixed(1)}%` : '50%'
   const isPinching = primaryHand?.isPinching ?? false
 
-  const currentIndex = selectedStar ? stars.findIndex((s) => s.id === selectedStar.id) : -1
+  const currentKey = selectedStar ? (selectedStar.name || selectedStar.id).toLowerCase().replace(/[^a-z0-9]/g, '') : ''
+  const currentIndex = selectedStar
+    ? stars.findIndex((s) => {
+        const sKey = (s.name || s.id).toLowerCase().replace(/[^a-z0-9]/g, '')
+        return s.id === selectedStar.id || sKey === currentKey || sKey.includes(currentKey) || currentKey.includes(sKey)
+      })
+    : -1
+
   const handlePrevStar = () => {
     if (stars.length === 0) return
-    const idx = currentIndex <= 0 ? stars.length - 1 : currentIndex - 1
+    const safeIdx = currentIndex >= 0 ? currentIndex : 0
+    const idx = (safeIdx - 1 + stars.length) % stars.length
     onSelectStar(stars[idx])
     onToggleInfoPanel(true)
   }
   const handleNextStar = () => {
     if (stars.length === 0) return
-    const idx = currentIndex < 0 || currentIndex >= stars.length - 1 ? 0 : currentIndex + 1
+    const safeIdx = currentIndex >= 0 ? currentIndex : 0
+    const idx = (safeIdx + 1) % stars.length
     onSelectStar(stars[idx])
     onToggleInfoPanel(true)
   }
@@ -295,10 +304,12 @@ export function ExplorerHUD({
           Systems:
         </span>
         {stars
-          .filter((s) => s.id !== '—')
+          .filter((s) => s.id !== '—' && s.id !== 'TEST-SPARSE')
           .map((star) => {
-            const isSelected = selectedStar?.id === star.id
-            const displayName = star.name.replace(/\s*\(.*\)/, '')
+            const starKey = (star.name || star.id).toLowerCase().replace(/[^a-z0-9]/g, '')
+            const selKey = selectedStar ? (selectedStar.name || selectedStar.id).toLowerCase().replace(/[^a-z0-9]/g, '') : ''
+            const isSelected = selectedStar?.id === star.id || (selKey && starKey === selKey)
+            const displayName = star.name.replace(/\s*\(.*\)/, '').trim()
 
             return (
               <button
@@ -307,10 +318,10 @@ export function ExplorerHUD({
                   onSelectStar(star)
                   onToggleInfoPanel(true)
                 }}
-                className={`px-2.5 py-1 rounded-xl text-xs font-mono border transition-all cursor-pointer shrink-0 whitespace-nowrap ${
+                className={`px-3 py-1.5 rounded-xl text-xs font-mono border transition-all cursor-pointer shrink-0 whitespace-nowrap ${
                   isSelected
-                    ? 'bg-cyan-500 text-slate-950 font-bold border-cyan-400 shadow-[0_0_14px_rgba(6,182,212,0.45)] scale-105'
-                    : 'bg-[#090e1a]/85 text-slate-300 border-slate-800 hover:border-cyan-500/50 hover:text-white'
+                    ? 'bg-cyan-500 text-slate-950 font-bold border-cyan-400 shadow-[0_0_14px_rgba(6,182,212,0.55)] scale-105'
+                    : 'bg-[#090e1a]/85 text-slate-300 border-slate-800 hover:border-cyan-500/60 hover:text-white'
                 }`}
                 title={`Focus ${star.name}`}
               >
