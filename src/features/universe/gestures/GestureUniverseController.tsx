@@ -213,25 +213,75 @@ export function GestureUniverseController({
     // 5. NAVIGATION MODES
     // ──────────────────────────────────────────────────────────────────────────
 
-    // ── MODE A: EXPLORE (Hand-driven camera rotation) ──
+    // ── MODE A: EXPLORE (Hand-driven camera rotation + Point-to-Select) ──
     if (mode === 'explore') {
-      const dx = primaryHand.navigationDelta.deltaX
-      const dy = primaryHand.navigationDelta.deltaY
+      const isPointingOrPinching =
+        primaryHand.gesture === 'pointing' ||
+        primaryHand.isPinching ||
+        primaryHand.pinchState === 'start'
 
-      if (Math.abs(dx) > 0 || Math.abs(dy) > 0) {
-        const { theta, phi } = calculateSphericalRotation(
-          dx,
-          dy,
-          currentTheta,
-          currentPhi,
-          settings
-        )
-        currentTheta = theta
-        currentPhi = phi
+      // Screen-space raycast to detect celestial target near fingertip
+      const hitTarget = findTargetFromFingertip(primaryHand.indexTip, celestialObjects, camera)
+
+      if (hitTarget) {
+        if (hoveredTargetRef.current?.id === hitTarget.id) {
+          stableHoverCountRef.current += 1
+        } else {
+          hoveredTargetRef.current = hitTarget
+          stableHoverCountRef.current = 1
+        }
+      } else {
+        hoveredTargetRef.current = null
+        stableHoverCountRef.current = 0
+      }
+
+      onHoverTarget?.(hoveredTargetRef.current)
+
+      // Evaluate pinch selection trigger with stability & cooldown
+      const shouldSelect = shouldTriggerSelection(
+        primaryHand.pinchState,
+        stableHoverCountRef.current,
+        settings.minHoverFramesBeforeSelect,
+        lastSelectionTimeRef.current,
+        now,
+        settings.selectionCooldownMs
+      )
+
+      if (shouldSelect && hoveredTargetRef.current) {
+        lastSelectionTimeRef.current = now
+        const selected = hoveredTargetRef.current
+
+        if (selected.type === 'planet' && selected.planet) {
+          onSelectPlanet?.(selected.planet, selected.star)
+        } else {
+          onSelectStar?.(selected.star)
+        }
+
+        // Trigger camera flight
+        const flight = calculateCameraFlightTarget(selected, initialCameraPosition)
+        targetLookAt.current.set(...flight.lookAt)
+        targetCamPos.current.set(...flight.cameraPosition)
+        isFlying.current = true
+      } else if (!isPointingOrPinching) {
+        // Open hand camera rotation
+        const dx = primaryHand.navigationDelta.deltaX
+        const dy = primaryHand.navigationDelta.deltaY
+
+        if (Math.abs(dx) > 0 || Math.abs(dy) > 0) {
+          const { theta, phi } = calculateSphericalRotation(
+            dx,
+            dy,
+            currentTheta,
+            currentPhi,
+            settings
+          )
+          currentTheta = theta
+          currentPhi = phi
+        }
       }
 
       // Single-hand pinch/scale depth zoom fallback
-      if (!gestureFrame.twoHandData && primaryHand.pinchDistance) {
+      if (!gestureFrame.twoHandData && primaryHand.pinchDistance && !hoveredTargetRef.current) {
         if (prevPinchDistRef.current !== null) {
           const depthDelta = primaryHand.pinchDistance - prevPinchDistRef.current
           currentRadius = calculateSingleHandDepthZoom(

@@ -1,9 +1,6 @@
-/**
- * HudTopBar – top-left logo and mode badges.
- * Rendered as a compact, semi-transparent glass strip.
- */
-import { Telescope, Hand } from 'lucide-react'
+import { Telescope, Hand, Sliders, Compass, Target, Pause } from 'lucide-react'
 import type { ExplorerMode } from './types'
+import type { GestureNavigationMode } from '../universe/gestures/types'
 import './hud.css'
 
 interface HudTopBarProps {
@@ -11,6 +8,10 @@ interface HudTopBarProps {
   onModeChange: (mode: ExplorerMode) => void
   showHandTracking?: boolean
   onToggleHandTracking?: () => void
+  gestureMode?: GestureNavigationMode
+  onGestureModeChange?: (mode: GestureNavigationMode) => void
+  onOpenCalibration?: () => void
+  isCameraActive?: boolean
   className?: string
 }
 
@@ -19,6 +20,10 @@ export function HudTopBar({
   onModeChange,
   showHandTracking,
   onToggleHandTracking,
+  gestureMode = 'explore',
+  onGestureModeChange,
+  onOpenCalibration,
+  isCameraActive = false,
   className = '',
 }: HudTopBarProps) {
   return (
@@ -107,7 +112,67 @@ export function HudTopBar({
         >
           <Hand size={13} />
           <span>Hand Tracking</span>
+          {isCameraActive && (
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse ml-0.5" />
+          )}
         </button>
+      )}
+
+      {/* Gesture Modes & Calibration (Visible when hand tracking is toggled on or camera active) */}
+      {(showHandTracking || isCameraActive) && onGestureModeChange && (
+        <div className="flex items-center gap-1 pl-1 border-l border-cyan-800/40">
+          <button
+            onClick={() => onGestureModeChange('explore')}
+            className={`hud-btn px-2 py-1 text-[11px] flex items-center gap-1 ${
+              gestureMode === 'explore' ? 'hud-btn--active text-cyan-300 font-bold' : 'text-slate-400'
+            }`}
+            title="Explore Mode: Open hand rotates and tilts camera"
+          >
+            <Compass size={12} />
+            <span className="hidden md:inline">Explore</span>
+          </button>
+          <button
+            onClick={() => onGestureModeChange('grab')}
+            className={`hud-btn px-2 py-1 text-[11px] flex items-center gap-1 ${
+              gestureMode === 'grab' ? 'hud-btn--active text-amber-300 font-bold' : 'text-slate-400'
+            }`}
+            title="Grab Mode: Pinch and drag to rotate view"
+          >
+            <Hand size={12} />
+            <span className="hidden md:inline">Grab</span>
+          </button>
+          <button
+            onClick={() => onGestureModeChange('select')}
+            className={`hud-btn px-2 py-1 text-[11px] flex items-center gap-1 ${
+              gestureMode === 'select' ? 'hud-btn--active text-emerald-300 font-bold' : 'text-slate-400'
+            }`}
+            title="Select Mode: Point at planet and pinch to lock & inspect"
+          >
+            <Target size={12} />
+            <span className="hidden md:inline">Select</span>
+          </button>
+          <button
+            onClick={() => onGestureModeChange('paused')}
+            className={`hud-btn px-2 py-1 text-[11px] flex items-center gap-1 ${
+              gestureMode === 'paused' ? 'hud-btn--active text-rose-300 font-bold' : 'text-slate-400'
+            }`}
+            title="Pause Gesture Inputs (Spacebar)"
+          >
+            <Pause size={12} />
+            <span className="hidden md:inline">Paused</span>
+          </button>
+
+          {onOpenCalibration && (
+            <button
+              onClick={onOpenCalibration}
+              className="hud-btn px-2 py-1 text-[11px] flex items-center gap-1 text-cyan-400 hover:text-white"
+              title="Open Gesture Calibration & Kinematics Settings (Key: C)"
+            >
+              <Sliders size={12} />
+              <span className="hidden md:inline">Calibrate</span>
+            </button>
+          )}
+        </div>
       )}
 
       {/* Live status dot */}

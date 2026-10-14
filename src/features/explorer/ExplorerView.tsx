@@ -22,13 +22,20 @@
  * the HUD and UniverseScene so they stay in sync without prop-drilling a
  * shared ref.
  */
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { UniverseScene, starObservationsToCelestialObjects } from '../universe'
 import { ExplorerHUD } from './ExplorerHUD'
 import { useHandTracking, HandTrackingOverlay, HandTrackingDemo } from '../hand-tracking'
+import { GestureCalibrationModal } from './GestureCalibrationModal'
+import {
+  DEFAULT_GESTURE_SETTINGS,
+  type GestureNavigationMode,
+  type GestureNavigationSettings,
+  type GestureTarget
+} from '../universe/gestures/types'
 import type { NavControlState } from './NavigationControls'
 import type { ExplorerMode } from './types'
-import type { StarObservation, CelestialObject } from '../../types'
+import type { StarObservation, CelestialObject, CelestialPlanet } from '../../types'
 import './hud.css'
 
 export interface ExplorerViewProps {
@@ -67,16 +74,37 @@ export function ExplorerView({
   // Hand tracking visibility & telemetry demo panel (Member 1)
   const [showHandTracking, setShowHandTracking] = useState(false)
   const [showGestureDemo, setShowGestureDemo] = useState(false)
+  // Gesture navigation and calibration state (Member 2, Member 3 & Member 4)
+  const [gestureMode, setGestureMode] = useState<GestureNavigationMode>('explore')
+  const [gestureSettings, setGestureSettings] = useState<GestureNavigationSettings>(DEFAULT_GESTURE_SETTINGS)
+  const [isCalibrationOpen, setIsCalibrationOpen] = useState(false)
+  const [hoveredGestureTarget, setHoveredGestureTarget] = useState<GestureTarget | null>(null)
   // Reset key forces UniverseScene to re-mount and reset camera
   const [resetKey, setResetKey] = useState(0)
 
   // Real-time hand tracking hook (Member 1)
   const tracking = useHandTracking({
     onPinchStart: () => {
-      // Pinch triggers selection or inspection of currently focused star if info panel is closed
+      // Pinch triggers inspection of currently focused star if info panel is closed
       setInfoPanelOpen(true)
     }
   })
+
+  // Keyboard shortcut listeners: Spacebar to pause/unpause gestures, 'c' for calibration
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if ((e.target as HTMLElement)?.tagName === 'INPUT') return
+      if (e.key === ' ' && (showHandTracking || tracking.isCameraActive)) {
+        e.preventDefault()
+        setGestureMode((prev) => (prev === 'paused' ? 'explore' : 'paused'))
+      } else if ((e.key === 'c' || e.key === 'C') && !e.ctrlKey && !e.metaKey) {
+        setIsCalibrationOpen((prev) => !prev)
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [showHandTracking, tracking.isCameraActive])
 
   const defaultCelestialObjects = useMemo(() => starObservationsToCelestialObjects(stars), [stars])
   const celestialObjects = customCelestialObjects || defaultCelestialObjects
@@ -93,7 +121,19 @@ export function ExplorerView({
   }
 
   const handleSelectObject = (obj: { id: string; starObservation?: StarObservation }) => {
-    if (obj.starObservation) handleSelectStar(obj.starObservation)
+    if (obj.starObservation) {
+      handleSelectStar(obj.starObservation)
+    } else {
+      const star = stars.find((s) => s.id === obj.id)
+      if (star) handleSelectStar(star)
+    }
+  }
+
+  const handleSelectPlanet = (_planet: CelestialPlanet, parentStar: CelestialObject) => {
+    const star = stars.find((s) => s.id === parentStar.id)
+    if (star) {
+      handleSelectStar(star)
+    }
   }
 
   const handleResetCamera = () => {
@@ -117,6 +157,11 @@ export function ExplorerView({
         celestialObjects={celestialObjects}
         selectedObjectId={selectedStarId}
         onSelectObject={handleSelectObject}
+        onSelectPlanet={handleSelectPlanet}
+        onHoverGestureTarget={setHoveredGestureTarget}
+        gestureFrame={tracking.frame}
+        gestureMode={gestureMode}
+        gestureSettings={gestureSettings}
         showOrbits={navState.showOrbits}
         showLabels={navState.showLabels}
         enableMotion={navState.enableMotion}
@@ -155,6 +200,12 @@ export function ExplorerView({
         onToggleInfoPanel={setInfoPanelOpen}
         showHandTracking={showHandTracking}
         onToggleHandTracking={() => setShowHandTracking((prev) => !prev)}
+        gestureMode={gestureMode}
+        onGestureModeChange={setGestureMode}
+        onOpenCalibration={() => setIsCalibrationOpen(true)}
+        isCameraActive={tracking.isCameraActive}
+        gestureFrame={tracking.frame}
+        hoveredGestureTarget={hoveredGestureTarget}
         systemCount={celestialObjects.length}
       />
 
@@ -173,6 +224,18 @@ export function ExplorerView({
           )}
         </>
       )}
+
+      {/* ── Gesture Calibration & Kinematics Modal (Member 4) ── */}
+      <GestureCalibrationModal
+        isOpen={isCalibrationOpen}
+        onClose={() => setIsCalibrationOpen(false)}
+        settings={gestureSettings}
+        onUpdateSettings={setGestureSettings}
+        mode={gestureMode}
+        onModeChange={setGestureMode}
+        gestureFrame={tracking.frame}
+        fps={tracking.fps}
+      />
     </div>
   )
 }

@@ -1,7 +1,5 @@
 import React, { Suspense, useState, useEffect, useRef, useMemo } from 'react'
-import { Canvas, useFrame, useThree } from '@react-three/fiber'
-import { OrbitControls } from '@react-three/drei'
-import * as THREE from 'three'
+import { Canvas } from '@react-three/fiber'
 import {
   Sparkles,
   Compass,
@@ -27,8 +25,10 @@ import {
   GestureHUDOverlay,
   useHandTracking,
   type GestureNavigationMode,
+  type GestureNavigationSettings,
   type GestureTarget
 } from './gestures'
+import type { GestureFrame } from '../../types/gestures'
 import type {
   UniverseSceneProps,
   CelestialObject,
@@ -51,66 +51,6 @@ function checkWebGLSupport(): boolean {
   }
 }
 
-/**
- * Camera Controller that smoothly flies to and focuses on selected star systems or planets
- */
-function CameraController({
-  targetPosition,
-  initialPosition = [0, 45, 120],
-  resetTrigger = 0
-}: {
-  targetPosition?: [number, number, number] | null
-  initialPosition?: [number, number, number]
-  resetTrigger?: number
-}) {
-  const { camera } = useThree()
-  const controlsRef = useRef<any>(null)
-  const targetLookAt = useRef(new THREE.Vector3(0, 0, 0))
-  const isResetting = useRef(false)
-
-  useEffect(() => {
-    if (resetTrigger > 0) {
-      targetLookAt.current.set(0, 0, 0)
-      isResetting.current = true
-    }
-  }, [resetTrigger])
-
-  useEffect(() => {
-    if (targetPosition) {
-      isResetting.current = false
-      targetLookAt.current.set(...targetPosition)
-    }
-  }, [targetPosition])
-
-  useFrame((_, delta) => {
-    if (!controlsRef.current) return
-
-    // Smoothly interpolate look-at target
-    controlsRef.current.target.lerp(targetLookAt.current, delta * 3.5)
-
-    // Smoothly restore initial camera position on reset
-    if (isResetting.current) {
-      const initVec = new THREE.Vector3(...initialPosition)
-      camera.position.lerp(initVec, delta * 2.5)
-      if (camera.position.distanceTo(initVec) < 0.5) {
-        isResetting.current = false
-      }
-    }
-
-    controlsRef.current.update()
-  })
-
-  return (
-    <OrbitControls
-      ref={controlsRef}
-      enableDamping
-      dampingFactor={0.05}
-      minDistance={6}
-      maxDistance={450}
-      maxPolarAngle={Math.PI / 2 + 0.3}
-    />
-  )
-}
 
 /**
  * Loading Experience Fallback
@@ -154,6 +94,12 @@ function WebGLFallback() {
 
 export interface ExtendedUniverseSceneProps extends UniverseSceneProps {
   onAnalyzeLightCurve?: (star: CelestialObject) => void
+  gestureFrame?: GestureFrame
+  gestureMode?: GestureNavigationMode
+  gestureSettings?: Partial<GestureNavigationSettings>
+  onHoverGestureTarget?: (target: GestureTarget | null) => void
+  enableGestures?: boolean
+  initialGestureMode?: GestureNavigationMode
 }
 
 /**
@@ -180,7 +126,11 @@ export function UniverseScene({
   initialCameraPosition = [0, 40, 110],
   onAnalyzeLightCurve,
   enableGestures = true,
-  initialGestureMode = 'explore'
+  initialGestureMode = 'explore',
+  gestureFrame: customGestureFrame,
+  gestureMode: customGestureMode,
+  gestureSettings,
+  onHoverGestureTarget
 }: ExtendedUniverseSceneProps) {
   const [hasWebGL] = useState<boolean>(() => checkWebGLSupport())
   const [internalShowOrbits, setInternalShowOrbits] = useState(initialShowOrbits)
@@ -248,14 +198,6 @@ export function UniverseScene({
     return searchCelestialCatalog(searchQuery)
   }, [searchQuery])
 
-  // Target camera focus position
-  const targetCameraPos = useMemo<[number, number, number] | null>(() => {
-    if (!activeTarget) return null
-    if (activeTarget.type === 'star') {
-      return activeTarget.star.position
-    }
-    return activeTarget.parentStar.position
-  }, [activeTarget])
 
   const handleSelectStar = (star: CelestialObject) => {
     setUserSelectedTarget({ type: 'star', star })
@@ -316,14 +258,18 @@ export function UniverseScene({
 
           {/* Interactive Camera & Hand Gesture Controller */}
           <GestureUniverseController
-            gestureFrame={handTracking.frame}
-            mode={enableGestures ? gestureMode : 'paused'}
+            gestureFrame={customGestureFrame !== undefined ? customGestureFrame : handTracking.frame}
+            mode={enableGestures ? (customGestureMode !== undefined ? customGestureMode : gestureMode) : 'paused'}
             celestialObjects={celestialObjects}
             selectedTarget={activeTarget}
             onSelectStar={handleSelectStar}
             onSelectPlanet={handleSelectPlanet}
-            onHoverTarget={setGestureHoveredTarget}
+            onHoverTarget={(target) => {
+              setGestureHoveredTarget(target)
+              onHoverGestureTarget?.(target)
+            }}
             onReturnToUniverse={handleResetCamera}
+            settings={gestureSettings}
             initialCameraPosition={initialCameraPosition}
             resetTrigger={resetTrigger}
           />
