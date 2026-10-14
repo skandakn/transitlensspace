@@ -22,6 +22,13 @@ import { Nebula, DistantGalaxy } from './Nebula'
 import { StarSystem } from './StarSystem'
 import { CelestialDetailsPanel } from './CelestialDetailsPanel'
 import { searchCelestialCatalog } from '../../data/astronomyData'
+import {
+  GestureUniverseController,
+  GestureHUDOverlay,
+  useHandTracking,
+  type GestureNavigationMode,
+  type GestureTarget
+} from './gestures'
 import type {
   UniverseSceneProps,
   CelestialObject,
@@ -171,13 +178,20 @@ export function UniverseScene({
   quality: initialQuality = 'high',
   className = '',
   initialCameraPosition = [0, 40, 110],
-  onAnalyzeLightCurve
+  onAnalyzeLightCurve,
+  enableGestures = true,
+  initialGestureMode = 'explore'
 }: ExtendedUniverseSceneProps) {
   const [hasWebGL] = useState<boolean>(() => checkWebGLSupport())
   const [internalShowOrbits, setInternalShowOrbits] = useState(initialShowOrbits)
   const [internalShowLabels, setInternalShowLabels] = useState(initialShowLabels)
   const [internalEnableMotion, setInternalEnableMotion] = useState(initialEnableMotion)
   const [internalQuality, setInternalQuality] = useState<'low' | 'high'>(initialQuality === 'low' ? 'low' : 'high')
+
+  // Hand tracking and gesture navigation state
+  const handTracking = useHandTracking({ autoStart: false })
+  const [gestureMode, setGestureMode] = useState<GestureNavigationMode>(initialGestureMode)
+  const [gestureHoveredTarget, setGestureHoveredTarget] = useState<GestureTarget | null>(null)
 
   const showOrbits = hideDefaultControls ? initialShowOrbits : internalShowOrbits
   const showLabels = hideDefaultControls ? initialShowLabels : internalShowLabels
@@ -300,10 +314,17 @@ export function UniverseScene({
           <ambientLight intensity={0.45} />
           <directionalLight position={[100, 80, 50]} intensity={0.6} color="#e0f2fe" />
 
-          {/* Interactive Camera Controller */}
-          <CameraController
-            targetPosition={targetCameraPos}
-            initialPosition={initialCameraPosition}
+          {/* Interactive Camera & Hand Gesture Controller */}
+          <GestureUniverseController
+            gestureFrame={handTracking.frame}
+            mode={enableGestures ? gestureMode : 'paused'}
+            celestialObjects={celestialObjects}
+            selectedTarget={activeTarget}
+            onSelectStar={handleSelectStar}
+            onSelectPlanet={handleSelectPlanet}
+            onHoverTarget={setGestureHoveredTarget}
+            onReturnToUniverse={handleResetCamera}
+            initialCameraPosition={initialCameraPosition}
             resetTrigger={resetTrigger}
           />
 
@@ -359,6 +380,21 @@ export function UniverseScene({
           })}
         </Canvas>
       </Suspense>
+
+      {/* Hand Gesture Navigation HUD Overlay */}
+      {enableGestures && (
+        <GestureHUDOverlay
+          mode={gestureMode}
+          onModeChange={setGestureMode}
+          gestureFrame={handTracking.frame}
+          hoveredTarget={gestureHoveredTarget}
+          isWebcamActive={handTracking.isWebcamActive}
+          onToggleWebcam={handTracking.toggleTracking}
+          onReturnToUniverse={handleResetCamera}
+          videoRef={handTracking.videoRef}
+          cameraError={handTracking.error}
+        />
+      )}
 
       {/* Floating 3D HUD Toolbar & Inspector (fallback when external HUD is not managing controls) */}
       {!hideDefaultControls && (
