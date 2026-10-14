@@ -69,10 +69,9 @@ export function useWebcam(options: UseWebcamOptions = {}) {
       if (videoRef.current) {
         videoRef.current.srcObject = stream
         videoRef.current.onloadedmetadata = () => {
-          videoRef.current?.play().catch(() => {
-            // Autoplay policy fallback
-          })
+          videoRef.current?.play().catch(() => {})
         }
+        videoRef.current.play().catch(() => {})
       }
 
       setIsDemoMode(false)
@@ -148,6 +147,19 @@ export function useWebcam(options: UseWebcamOptions = {}) {
       isLoading: false,
     }))
   }, [stopCamera])
+
+  // Ensure video element receives stream whenever it becomes available or mounts
+  useEffect(() => {
+    if (videoRef.current && state.stream) {
+      if (videoRef.current.srcObject !== state.stream) {
+        videoRef.current.srcObject = state.stream
+        videoRef.current.onloadedmetadata = () => {
+          videoRef.current?.play().catch(() => {})
+        }
+        videoRef.current.play().catch(() => {})
+      }
+    }
+  }, [state.stream, state.isActive])
 
   useEffect(() => {
     let timer: any = null

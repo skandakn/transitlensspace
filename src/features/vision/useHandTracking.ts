@@ -102,6 +102,8 @@ export function useHandTracking({
   const handLandmarkerRef = useRef<any>(null)
   const animFrameRef = useRef<number | null>(null)
   const lastVideoTimeRef = useRef<number>(-1)
+  const lastDetectTimeRef = useRef<number>(0)
+  const isProcessingRef = useRef<boolean>(false)
   const smoothedPos = useRef<Point2D>({ x: 0.5, y: 0.5 })
 
   // Initialize MediaPipe HandLandmarker only if no external hand tracking is provided
@@ -122,7 +124,7 @@ export function useHandTracking({
 
         if (isCancelled) return
 
-        const handLandmarker = await HandLandmarker.createFromOptions(filesetResolver, {
+        const loadModelPromise = HandLandmarker.createFromOptions(filesetResolver, {
           baseOptions: {
             modelAssetPath:
               'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task',
@@ -131,6 +133,12 @@ export function useHandTracking({
           runningMode: 'VIDEO',
           numHands: 1,
         })
+
+        const timeoutPromise = new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error('MediaPipe Hand Landmarker load timeout')), 7000)
+        )
+
+        const handLandmarker = await Promise.race([loadModelPromise, timeoutPromise])
 
         if (!isCancelled) {
           handLandmarkerRef.current = handLandmarker
@@ -207,6 +215,13 @@ export function useHandTracking({
     const processFrame = () => {
       if (!isRunning) return
 
+      const now = performance.now()
+      if (now - lastDetectTimeRef.current < 80) {
+        animFrameRef.current = requestAnimationFrame(processFrame)
+        return
+      }
+      lastDetectTimeRef.current = now
+
       if (isDemoMode) {
         const time = Date.now() * 0.001
         const x = 0.5 + Math.sin(time * 0.9) * 0.25
@@ -248,9 +263,11 @@ export function useHandTracking({
         landmarker &&
         video.readyState >= 2 &&
         !video.paused &&
+        !isProcessingRef.current &&
         video.currentTime !== lastVideoTimeRef.current
       ) {
         lastVideoTimeRef.current = video.currentTime
+        isProcessingRef.current = true
 
         try {
           const startTimeMs = performance.now()
@@ -294,6 +311,8 @@ export function useHandTracking({
           }
         } catch {
           // Frame dropped gracefully
+        } finally {
+          isProcessingRef.current = false
         }
       }
 

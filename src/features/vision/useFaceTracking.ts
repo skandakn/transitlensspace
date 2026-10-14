@@ -37,6 +37,8 @@ export function useFaceTracking({
   const animFrameRef = useRef<number | null>(null)
   const smoothedOrientation = useRef<HeadOrientation>({ yaw: 0, pitch: 0, roll: 0 })
   const lastVideoTimeRef = useRef<number>(-1)
+  const lastDetectTimeRef = useRef<number>(0)
+  const isProcessingRef = useRef<boolean>(false)
 
   // Toggle head adjustment
   const toggleHeadAdjustments = useCallback(() => {
@@ -46,7 +48,7 @@ export function useFaceTracking({
     }))
   }, [])
 
-  // Initialize MediaPipe Face Landmarker
+  // Initialize MediaPipe Face Landmarker with timeout safety
   useEffect(() => {
     let isCancelled = false
 
@@ -64,7 +66,7 @@ export function useFaceTracking({
 
         if (isCancelled) return
 
-        const faceLandmarker = await FaceLandmarker.createFromOptions(filesetResolver, {
+        const loadModelPromise = FaceLandmarker.createFromOptions(filesetResolver, {
           baseOptions: {
             modelAssetPath:
               'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task',
@@ -75,6 +77,12 @@ export function useFaceTracking({
           runningMode: 'VIDEO',
           numFaces: 1,
         })
+
+        const timeoutPromise = new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error('MediaPipe Face Landmarker load timeout')), 7000)
+        )
+
+        const faceLandmarker = await Promise.race([loadModelPromise, timeoutPromise])
 
         if (!isCancelled) {
           landmarkerRef.current = faceLandmarker
@@ -135,7 +143,7 @@ export function useFaceTracking({
     }
   }, [isActive, isDemoMode])
 
-  // Processing loop using requestAnimationFrame
+  // Processing loop using throttled requestAnimationFrame (~12-14 FPS for zero thread lag)
   useEffect(() => {
     if (!isActive) {
       if (animFrameRef.current) {
@@ -149,6 +157,14 @@ export function useFaceTracking({
 
     const processFrame = () => {
       if (!isRunning) return
+
+      const now = performance.now()
+      // Throttle to 80ms (12.5 FPS) so main thread stays 100% responsive and never freezes
+      if (now - lastDetectTimeRef.current < 80) {
+        animFrameRef.current = requestAnimationFrame(processFrame)
+        return
+      }
+      lastDetectTimeRef.current = now
 
       if (isDemoMode) {
         // Subtle simulated breath / idle orientation for demo testing
@@ -183,9 +199,11 @@ export function useFaceTracking({
         landmarker &&
         video.readyState >= 2 &&
         !video.paused &&
+        !isProcessingRef.current &&
         video.currentTime !== lastVideoTimeRef.current
       ) {
         lastVideoTimeRef.current = video.currentTime
+        isProcessingRef.current = true
 
         try {
           const startTimeMs = performance.now()
@@ -265,6 +283,8 @@ export function useFaceTracking({
           }
         } catch {
           // Detection frame dropped, continue gracefully
+        } finally {
+          isProcessingRef.current = false
         }
       }
 
