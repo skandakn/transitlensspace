@@ -2,17 +2,25 @@
  * HudTopBar – top-left logo and mode badges.
  * Rendered as a compact, semi-transparent glass strip.
  */
-import { Telescope } from 'lucide-react'
+import { Telescope, Hand } from 'lucide-react'
 import type { ExplorerMode } from './types'
 import './hud.css'
 
 interface HudTopBarProps {
   mode: ExplorerMode
   onModeChange: (mode: ExplorerMode) => void
+  showHandTracking?: boolean
+  onToggleHandTracking?: () => void
   className?: string
 }
 
-export function HudTopBar({ mode, onModeChange, className = '' }: HudTopBarProps) {
+export function HudTopBar({
+  mode,
+  onModeChange,
+  showHandTracking,
+  onToggleHandTracking,
+  className = '',
+}: HudTopBarProps) {
   return (
     <div
       className={`hud-panel hud-interactive hud-enter-down flex items-center gap-3 px-4 py-2.5 ${className}`}
@@ -87,6 +95,20 @@ export function HudTopBar({ mode, onModeChange, className = '' }: HudTopBarProps
           Free&nbsp;Flight
         </button>
       </div>
+
+      {/* Hand Gesture Tracking Toggle */}
+      {onToggleHandTracking && (
+        <button
+          id="hud-toggle-hand-tracking"
+          className={`hud-btn flex items-center gap-1.5 ${showHandTracking ? 'hud-btn--active' : ''}`}
+          onClick={onToggleHandTracking}
+          title="Toggle Webcam Hand Gesture Tracking (Member 1)"
+          aria-pressed={showHandTracking}
+        >
+          <Hand size={13} />
+          <span>Hand Tracking</span>
+        </button>
+      )}
 
       {/* Live status dot */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginLeft: '0.4rem' }}>

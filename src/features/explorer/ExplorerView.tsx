@@ -25,6 +25,7 @@
 import { useState, useMemo } from 'react'
 import { UniverseScene, starObservationsToCelestialObjects } from '../universe'
 import { ExplorerHUD } from './ExplorerHUD'
+import { useHandTracking, HandTrackingOverlay, HandTrackingDemo } from '../hand-tracking'
 import type { NavControlState } from './NavigationControls'
 import type { ExplorerMode } from './types'
 import type { StarObservation, CelestialObject } from '../../types'
@@ -63,8 +64,19 @@ export function ExplorerView({
   })
   // Track whether info panel is open (closed by user vs. no selection)
   const [infoPanelOpen, setInfoPanelOpen] = useState(true)
+  // Hand tracking visibility & telemetry demo panel (Member 1)
+  const [showHandTracking, setShowHandTracking] = useState(false)
+  const [showGestureDemo, setShowGestureDemo] = useState(false)
   // Reset key forces UniverseScene to re-mount and reset camera
   const [resetKey, setResetKey] = useState(0)
+
+  // Real-time hand tracking hook (Member 1)
+  const tracking = useHandTracking({
+    onPinchStart: () => {
+      // Pinch triggers selection or inspection of currently focused star if info panel is closed
+      setInfoPanelOpen(true)
+    }
+  })
 
   const defaultCelestialObjects = useMemo(() => starObservationsToCelestialObjects(stars), [stars])
   const celestialObjects = customCelestialObjects || defaultCelestialObjects
@@ -141,8 +153,26 @@ export function ExplorerView({
         }
         infoPanelOpen={infoPanelOpen}
         onToggleInfoPanel={setInfoPanelOpen}
+        showHandTracking={showHandTracking}
+        onToggleHandTracking={() => setShowHandTracking((prev) => !prev)}
         systemCount={celestialObjects.length}
       />
+
+      {/* ── Hand Tracking Overlay & Live Gesture Inspector (Member 1) ── */}
+      {showHandTracking && (
+        <>
+          <HandTrackingOverlay
+            tracking={tracking}
+            onToggleDemoPanel={() => setShowGestureDemo((v) => !v)}
+          />
+          {showGestureDemo && (
+            <HandTrackingDemo
+              tracking={tracking}
+              onClose={() => setShowGestureDemo(false)}
+            />
+          )}
+        </>
+      )}
     </div>
   )
 }
