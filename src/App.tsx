@@ -215,16 +215,16 @@ function DiscoveryWorkspace({
                 className="bg-transparent text-slate-100 font-mono text-xs w-full focus:outline-none cursor-pointer"
               >
                 <optgroup label="🌟 Known Planetary Transit Signals">
-                  <option value="TOI-700">TOI-700 — Calibrated Demo Data (TESS Sector 11-13) [Periodic Dips]</option>
-                  <option value="Kepler-90">Kepler-90 — Real Astronomical Data (Kepler Q1-Q17) [Multi-Planet]</option>
-                  <option value="TRAPPIST-1">TRAPPIST-1 — Real Astronomical Data (Spitzer/K2) [7-Planet System]</option>
-                  <option value="WASP-12">WASP-12 — Real Astronomical Data (TESS Fast Cadence) [Ultra-Hot Jupiter]</option>
+                  <option value="TOI-700">TOI-700 — Bundled NASA TESS Sector 27 [Measured Photometry]</option>
+                  <option value="Kepler-90">Kepler-90 — Bundled NASA Kepler Q5 [Measured Photometry]</option>
+                  <option value="TRAPPIST-1">TRAPPIST-1 — Calibrated Demonstration Curve [7-Planet System]</option>
+                  <option value="WASP-12">WASP-12 — Calibrated Demonstration Curve [Ultra-Hot Jupiter]</option>
                 </optgroup>
                 <optgroup label="➖ Flat Baseline Control (No Transits)">
-                  <option value="HD-219134">HD 219134 — Real Astronomical Data (Spitzer/Ground) [Flat Quiet Star]</option>
+                  <option value="HD-219134">HD 219134 — Calibrated Control Curve [Flat Quiet Star]</option>
                 </optgroup>
                 <optgroup label="⚡ High Stellar Noise & Flares (Inconclusive)">
-                  <option value="Proxima-Centauri">Proxima Centauri — Real Astronomical Data (TESS) [Active Flare Host]</option>
+                  <option value="Proxima-Centauri">Proxima Centauri — Calibrated Demonstration Curve [Active Flare Host]</option>
                 </optgroup>
                 <optgroup label="⚠️ Diagnostic Validation (<15 Cadences)">
                   <option value="Sparse-Cadence">Sparse Incomplete Test (&lt;15 Points) [Rejection Diagnostic]</option>
@@ -334,6 +334,8 @@ function DiscoveryWorkspace({
               title={
                 !workflow.canAnalyze
                   ? workflow.validationReason || 'Valid observation and light curve data required'
+                  : currentObs?.backendDatasetId
+                  ? 'Run Lightkurve Box Least Squares on bundled NASA photometry'
                   : 'Run client-side BLS algorithmic transit detection'
               }
             >
@@ -390,7 +392,11 @@ function DiscoveryWorkspace({
 
         <div className="target-footnote">
           <span className="footnote-dot" aria-hidden="true" />
-          {lightCurve.length >= 15 ? (
+          {currentObs?.backendDatasetId && lightCurve.length === 0 ? (
+            <span className="text-cyan-300">
+              ⊙ Pre-downloaded NASA {currentObs.star.mission} observation is ready. Run analysis to load its measured cadences.
+            </span>
+          ) : lightCurve.length >= 15 ? (
             <span className="text-emerald-400">
               ✓ {lightCurve.length.toLocaleString()} calibrated photometric cadences loaded and ready for analysis.
             </span>
@@ -500,6 +506,8 @@ export function App() {
   const workflow = useAnalysisWorkflow({
     star: selectedStar,
     lightCurve,
+    backendDatasetId: currentObs?.backendDatasetId,
+    onBackendLightCurve: setLightCurve,
     onAnalysisCompleted: (completedResult) => {
       setResults((prev) => [
         completedResult,
@@ -514,7 +522,7 @@ export function App() {
     if (obs) {
       setTargetId(obs.star.name || obs.star.id)
       setMission(obs.star.mission)
-      setLightCurve(obs.lightCurve)
+      setLightCurve(obs.backendDatasetId ? [] : obs.lightCurve)
       workflow.resetAnalysis()
     }
   }
@@ -569,7 +577,7 @@ export function App() {
       setSelectedObsId('')
       setTargetId(star.id === '—' ? '' : star.name || star.id)
       setMission(star.mission)
-      setLightCurve(generateSyntheticLightCurve(3.52, 0.85, 0.0095, 2.4, 20, 30))
+      setLightCurve([])
       workflow.resetAnalysis()
     }
   }

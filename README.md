@@ -30,6 +30,16 @@ npm run dev
 npm run build
 ```
 
+### Real NASA observation pipeline
+
+The existing React interface can call a small FastAPI/Lightkurve service for two
+pre-downloaded NASA MAST observations: TOI-700 (`TIC-261136679`) and Kepler-90
+(`KIC-11442793`). This preserves the stable 3D selection IDs while keeping the judge demo
+independent of a live archive request. See [backend/README.md](backend/README.md) for
+local setup, data provenance, tests, deployment, and BLS limitations. Configure the
+deployed service with `VITE_TRANSIT_API_URL`; the frontend shows a useful error if it is
+not configured or the backend is unavailable.
+
 ---
 
 ## 🌌 Astronomy Dark Design System
