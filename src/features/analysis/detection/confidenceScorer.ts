@@ -27,7 +27,7 @@ export function computeConfidenceAndQuality(inputs: ScoringInputs): ScoringOutpu
   const {
     matchedDips,
     foldedSnr,
-    depthFraction,
+    depthFraction: _depthFraction,
     noiseSigma,
     isPeriodic,
     inTransitPointsCount

@@ -1,13 +1,5 @@
 import React from 'react'
-import {
-  Sliders,
-  Play,
-  Settings2,
-  Zap,
-  Activity,
-  Layers,
-  HelpCircle
-} from 'lucide-react'
+import { Sliders, Play } from 'lucide-react'
 import type { DetectionAlgorithm, AnalysisParameters } from '../../types'
 import { Button } from '../../components/ui/Button'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../../components/ui/Card'

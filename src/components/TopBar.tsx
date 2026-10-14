@@ -5,8 +5,7 @@ import {
   RotateCcw,
   Sparkles,
   Telescope,
-  ChevronDown,
-  Activity
+  ChevronDown
 } from 'lucide-react'
 import { GithubIcon } from './icons/GithubIcon'
 import type { StarObservation, AnalysisStatus } from '../types'

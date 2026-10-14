@@ -1,7 +1,6 @@
 import type {
   TransitDetectionOptions,
-  TransitDetectionOutput,
-  RawDataPoint
+  TransitDetectionOutput
 } from './types'
 import { validateAndSortPoints } from './validation'
 import { normalizeAndEstimateBaseline } from './normalization'

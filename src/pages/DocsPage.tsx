@@ -1,7 +1,6 @@
 import React from 'react'
-import { BookOpen, Code, Layers, GitBranch, Cpu, ShieldCheck, CheckCircle2 } from 'lucide-react'
+import { BookOpen, Code, Layers, GitBranch, Cpu } from 'lucide-react'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../components/ui/Card'
-import { Badge } from '../components/ui/Badge'
 
 export function DocsPage() {
   return (

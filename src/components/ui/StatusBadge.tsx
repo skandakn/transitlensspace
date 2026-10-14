@@ -1,5 +1,5 @@
 import React from 'react'
-import { Clock, Play, CheckCircle2, AlertTriangle, XCircle, RotateCcw } from 'lucide-react'
+import { Clock, Play, CheckCircle2, AlertTriangle, RotateCcw } from 'lucide-react'
 import type { AnalysisStatus } from '../../types'
 import { Badge } from './Badge'
 
