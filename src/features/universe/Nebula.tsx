@@ -19,6 +19,27 @@ function createPRNG(seed = 42) {
   }
 }
 
+function useSoftPointTexture() {
+  return useMemo(() => {
+    const canvas = document.createElement('canvas')
+    canvas.width = 64
+    canvas.height = 64
+    const context = canvas.getContext('2d')
+    if (context) {
+      const gradient = context.createRadialGradient(32, 32, 1, 32, 32, 32)
+      gradient.addColorStop(0, 'rgba(255,255,255,1)')
+      gradient.addColorStop(0.28, 'rgba(255,255,255,0.86)')
+      gradient.addColorStop(0.72, 'rgba(255,255,255,0.12)')
+      gradient.addColorStop(1, 'rgba(255,255,255,0)')
+      context.fillStyle = gradient
+      context.fillRect(0, 0, 64, 64)
+    }
+    const texture = new THREE.CanvasTexture(canvas)
+    texture.needsUpdate = true
+    return texture
+  }, [])
+}
+
 /**
  * Distant Spiral Galaxy component
  */
@@ -28,7 +49,7 @@ export function DistantGalaxy({
   colorCore = '#fffbeb',
   colorArms = '#818cf8',
   armCount = 2,
-  particleCount = 1800
+  particleCount = 950
 }: {
   position?: [number, number, number]
   scale?: number
@@ -38,6 +59,7 @@ export function DistantGalaxy({
   particleCount?: number
 }) {
   const galaxyRef = useRef<THREE.Points>(null)
+  const pointTexture = useSoftPointTexture()
 
   const { positions, colors } = useMemo(() => {
     const rand = createPRNG(1001)
@@ -85,10 +107,12 @@ export function DistantGalaxy({
           <bufferAttribute attach="attributes-color" args={[colors, 3]} />
         </bufferGeometry>
         <pointsMaterial
-          size={2.2}
+          size={1.15}
+          map={pointTexture}
           vertexColors
           transparent
-          opacity={0.7}
+          opacity={0.58}
+          alphaTest={0.03}
           blending={THREE.AdditiveBlending}
           depthWrite={false}
         />
@@ -104,11 +128,12 @@ export function Nebula({
   position = [-120, -40, -180],
   colorA = '#6366f1', // Indigo / violet
   colorB = '#06b6d4', // Cyan
-  particleCount = 1200,
+  particleCount = 520,
   scale = 65,
   enableMotion = true
 }: NebulaProps) {
   const nebulaRef = useRef<THREE.Group>(null)
+  const pointTexture = useSoftPointTexture()
 
   const { positions, colors } = useMemo(() => {
     const rand = createPRNG(2024)
@@ -154,10 +179,12 @@ export function Nebula({
           <bufferAttribute attach="attributes-color" args={[colors, 3]} />
         </bufferGeometry>
         <pointsMaterial
-          size={5.5}
+          size={3.1}
+          map={pointTexture}
           vertexColors
           transparent
-          opacity={0.35}
+          opacity={0.24}
+          alphaTest={0.03}
           blending={THREE.AdditiveBlending}
           depthWrite={false}
         />

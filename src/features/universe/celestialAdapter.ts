@@ -37,7 +37,9 @@ const CATALOG_POSITIONS: Record<string, [number, number, number]> = {
 /**
  * Realistic planetary architecture presets for known multi-planet systems.
  */
-const KNOWN_PLANET_SYSTEMS: Record<string, CelestialPlanet[]> = {
+type PlanetPreset = Omit<CelestialPlanet, 'hostStarId' | 'hostStarName'>
+
+const KNOWN_PLANET_SYSTEMS: Record<string, PlanetPreset[]> = {
   'TOI-700': [
     {
       id: 'toi-700-b',
@@ -134,7 +136,7 @@ export function starObservationsToCelestialObjects(stars: StarObservation[]): Ce
     }
 
     // Lookup planetary system if known, or generate based on star radius
-    const planets = KNOWN_PLANET_SYSTEMS[star.name] || [
+    const planetPresets: PlanetPreset[] = KNOWN_PLANET_SYSTEMS[star.name] || [
       {
         id: `${star.id}-b`,
         name: `${star.name} b`,
@@ -146,6 +148,11 @@ export function starObservationsToCelestialObjects(stars: StarObservation[]): Ce
         depthPpm: 950
       }
     ]
+    const planets: CelestialPlanet[] = planetPresets.map((planet) => ({
+      ...planet,
+      hostStarId: star.id,
+      hostStarName: star.name,
+    }))
 
     // Visual star scale (normalized around 1.2 to 2.8)
     const baseRadius = Math.max(1.0, Math.min(2.6, (star.stellarRadius || 1.0) * 1.4))

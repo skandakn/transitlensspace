@@ -9,6 +9,8 @@ import {
   Sliders,
   RotateCcw,
   Layers,
+  Layers3,
+  Navigation,
   AlertTriangle,
   Search,
   X,
@@ -45,49 +47,67 @@ function checkWebGLSupport(): boolean {
 /**
  * Camera Controller that smoothly flies to and focuses on selected star systems or planets
  */
+function planetPositionAtTime(parent: CelestialObject, planet: CelestialPlanet, elapsed: number) {
+  const hash = Array.from(planet.id).reduce((value, character) => (value * 31 + character.charCodeAt(0)) % 1000, 0)
+  const angle = (hash / 1000) * Math.PI * 2 + planet.orbitSpeed * 0.4 * elapsed
+  const distance = planet.distanceFromStar
+  const inclination = planet.orbitInclination || 0
+  return new THREE.Vector3(
+    parent.position[0] + Math.cos(angle) * distance,
+    parent.position[1] + Math.sin(angle) * Math.sin(inclination) * distance * 0.4,
+    parent.position[2] + Math.sin(angle) * distance,
+  )
+}
+
 function CameraController({
-  targetPosition,
+  target,
   initialPosition = [0, 45, 120],
-  resetTrigger = 0
+  flightRequest = 0,
 }: {
-  targetPosition?: [number, number, number] | null
+  target: SelectedTarget
   initialPosition?: [number, number, number]
-  resetTrigger?: number
+  flightRequest?: number
 }) {
   const { camera } = useThree()
   const controlsRef = useRef<any>(null)
-  const targetLookAt = useRef(new THREE.Vector3(0, 0, 0))
-  const isResetting = useRef(false)
+  const desiredTarget = useRef(new THREE.Vector3())
+  const desiredPosition = useRef(new THREE.Vector3(...initialPosition))
+  const viewingDirection = useRef(new THREE.Vector3(0.35, 0.22, 1).normalize())
+  const previousKey = useRef('')
+  const previousFlightRequest = useRef(flightRequest)
 
-  useEffect(() => {
-    if (resetTrigger > 0) {
-      targetLookAt.current.set(0, 0, 0)
-      isResetting.current = true
-    }
-  }, [resetTrigger])
-
-  useEffect(() => {
-    if (targetPosition) {
-      isResetting.current = false
-      targetLookAt.current.set(...targetPosition)
-    }
-  }, [targetPosition])
-
-  useFrame((_, delta) => {
+  useFrame(({ clock }, delta) => {
     if (!controlsRef.current) return
+    const key = target
+      ? target.type === 'star'
+        ? `star:${target.star.id}`
+        : `planet:${target.planet.id}`
+      : 'universe'
+    const focusPosition = target
+      ? target.type === 'star'
+        ? new THREE.Vector3(...target.star.position)
+        : planetPositionAtTime(target.parentStar, target.planet, clock.getElapsedTime())
+      : new THREE.Vector3(0, 0, 0)
 
-    // Smoothly interpolate look-at target
-    controlsRef.current.target.lerp(targetLookAt.current, delta * 3.5)
-
-    // Smoothly restore initial camera position on reset
-    if (isResetting.current) {
-      const initVec = new THREE.Vector3(...initialPosition)
-      camera.position.lerp(initVec, delta * 2.5)
-      if (camera.position.distanceTo(initVec) < 0.5) {
-        isResetting.current = false
-      }
+    if (previousKey.current !== key || previousFlightRequest.current !== flightRequest) {
+      const offset = camera.position.clone().sub(focusPosition)
+      if (offset.lengthSq() > 0.001) viewingDirection.current.copy(offset.normalize())
+      previousKey.current = key
+      previousFlightRequest.current = flightRequest
     }
 
+    desiredTarget.current.copy(focusPosition)
+    if (target) {
+      const radius = target.type === 'star' ? target.star.radius : target.planet.radius
+      const distance = THREE.MathUtils.clamp(Math.max(radius * 7.5, target.type === 'star' ? 13 : 5.5), 5.5, 32)
+      desiredPosition.current.copy(focusPosition).addScaledVector(viewingDirection.current, distance)
+    } else {
+      desiredPosition.current.set(...initialPosition)
+    }
+
+    const smoothing = 1 - Math.exp(-3.2 * delta)
+    camera.position.lerp(desiredPosition.current, smoothing)
+    controlsRef.current.target.lerp(desiredTarget.current, smoothing)
     controlsRef.current.update()
   })
 
@@ -99,6 +119,9 @@ function CameraController({
       minDistance={6}
       maxDistance={450}
       maxPolarAngle={Math.PI / 2 + 0.3}
+      rotateSpeed={0.55}
+      zoomSpeed={0.78}
+      panSpeed={0.7}
     />
   )
 }
@@ -173,13 +196,15 @@ export function UniverseScene({
   const [hasWebGL, setHasWebGL] = useState<boolean>(true)
   const [showOrbits, setShowOrbits] = useState(initialShowOrbits)
   const [showLabels, setShowLabels] = useState(initialShowLabels)
-  const [enableMotion, setEnableMotion] = useState(initialEnableMotion)
+  const [showPointClouds, setShowPointClouds] = useState(false)
+  const [enableMotion] = useState(initialEnableMotion)
   const [quality, setQuality] = useState<'low' | 'high'>(initialQuality === 'low' ? 'low' : 'high')
 
   // Search and Camera Focus State
   const [searchQuery, setSearchQuery] = useState('')
   const [isSearchOpen, setIsSearchOpen] = useState(false)
-  const [resetTrigger, setResetTrigger] = useState(0)
+  const [flightRequest, setFlightRequest] = useState(0)
+  const [detailsVisible, setDetailsVisible] = useState(true)
 
   // Target selection state
   const [activeTarget, setActiveTarget] = useState<SelectedTarget>(null)
@@ -227,31 +252,33 @@ export function UniverseScene({
     return searchCelestialCatalog(searchQuery)
   }, [searchQuery])
 
-  // Target camera focus position
-  const targetCameraPos = useMemo<[number, number, number] | null>(() => {
-    if (!activeTarget) return null
-    if (activeTarget.type === 'star') {
-      return activeTarget.star.position
-    }
-    return activeTarget.parentStar.position
-  }, [activeTarget])
-
   const handleSelectStar = (star: CelestialObject) => {
     setActiveTarget({ type: 'star', star })
     setSelectedPlanetId(undefined)
+    setDetailsVisible(true)
+    setFlightRequest((value) => value + 1)
     onSelectObject?.(star)
   }
 
   const handleSelectPlanet = (planet: CelestialPlanet, parentStar: CelestialObject) => {
     setActiveTarget({ type: 'planet', planet, parentStar })
     setSelectedPlanetId(planet.id)
+    setDetailsVisible(true)
+    setFlightRequest((value) => value + 1)
     onSelectPlanet?.(planet, parentStar)
   }
 
   const handleResetCamera = () => {
     setActiveTarget(null)
     setSelectedPlanetId(undefined)
-    setResetTrigger((prev) => prev + 1)
+    setDetailsVisible(false)
+    setFlightRequest((value) => value + 1)
+  }
+
+  const handleDeselect = () => {
+    setActiveTarget(null)
+    setSelectedPlanetId(undefined)
+    setDetailsVisible(false)
   }
 
   const handleSearchResultClick = (result: ReturnType<typeof searchCelestialCatalog>[number]) => {
@@ -273,6 +300,7 @@ export function UniverseScene({
       {/* 3D Canvas Scene */}
       <Suspense fallback={<UniverseLoader />}>
         <Canvas
+          onPointerMissed={handleDeselect}
           camera={{
             position: initialCameraPosition,
             fov: 50,
@@ -295,37 +323,37 @@ export function UniverseScene({
 
           {/* Interactive Camera Controller */}
           <CameraController
-            targetPosition={targetCameraPos}
+            target={activeTarget}
             initialPosition={initialCameraPosition}
-            resetTrigger={resetTrigger}
+            flightRequest={flightRequest}
           />
 
           {/* 1. Large 3D Starfield (Thousands of Stars) */}
           <Starfield
-            count={quality === 'high' ? 10000 : 4500}
+            count={quality === 'high' ? 6500 : 2800}
             quality={quality}
             enableTwinkle={enableMotion}
           />
 
           {/* 2. Procedural Nebulae Clouds */}
-          <Nebula
+          {showPointClouds && <Nebula
             position={[-140, -30, -180]}
             colorA="#6366f1"
             colorB="#06b6d4"
             scale={75}
             enableMotion={enableMotion}
-          />
-          <Nebula
+          />}
+          {showPointClouds && <Nebula
             position={[160, 45, -160]}
             colorA="#8b5cf6"
             colorB="#ec4899"
             scale={65}
             enableMotion={enableMotion}
-          />
+          />}
 
           {/* 3. Distant Spiral Galaxies */}
-          <DistantGalaxy position={[220, 80, -260]} scale={40} />
-          <DistantGalaxy position={[-200, 60, -220]} scale={32} colorArms="#38bdf8" />
+          {showPointClouds && <DistantGalaxy position={[220, 80, -260]} scale={40} />}
+          {showPointClouds && <DistantGalaxy position={[-200, 60, -220]} scale={32} colorArms="#38bdf8" />}
 
           {/* 4. Multiple Visually Separated Star Systems with Clickable Planets */}
           {celestialObjects.map((system) => {
@@ -431,6 +459,26 @@ export function UniverseScene({
 
         {/* Reset Camera View Button */}
         <button
+          onClick={() => setFlightRequest((value) => value + 1)}
+          disabled={!activeTarget}
+          className="px-2.5 py-1.5 rounded-lg bg-cyan-500/15 hover:bg-cyan-500/25 border border-cyan-500/40 disabled:opacity-40 disabled:cursor-not-allowed text-cyan-200 text-xs font-mono flex items-center gap-1.5 transition-colors cursor-pointer"
+          title="Smoothly fly to the selected object"
+        >
+          <Navigation className="w-3 h-3" />
+          <span className="hidden sm:inline">Fly To</span>
+        </button>
+
+        <button
+          onClick={() => setDetailsVisible((visible) => !visible)}
+          disabled={!activeTarget}
+          className="px-2.5 py-1.5 rounded-lg bg-[#070b14]/85 hover:bg-slate-800/80 border border-slate-750 disabled:opacity-40 disabled:cursor-not-allowed text-slate-300 text-xs font-mono flex items-center gap-1.5 transition-colors cursor-pointer"
+          title="Show or hide object details"
+        >
+          <Eye className="w-3 h-3 text-violet-300" />
+          <span className="hidden sm:inline">Details</span>
+        </button>
+
+        <button
           onClick={handleResetCamera}
           className="px-2.5 py-1.5 rounded-lg bg-[#070b14]/85 hover:bg-slate-800/80 border border-slate-750 text-slate-300 hover:text-cyan-300 text-xs font-mono flex items-center gap-1.5 transition-colors cursor-pointer"
           title="Reset Camera View to Default"
@@ -441,6 +489,17 @@ export function UniverseScene({
         </button>
 
         {/* Quality Mode Toggle */}
+        <button
+          onClick={() => setShowPointClouds(!showPointClouds)}
+          className={`px-2.5 py-1.5 rounded-lg border text-xs font-mono flex items-center gap-1.5 transition-colors cursor-pointer ${
+            showPointClouds ? 'bg-violet-950/70 border-violet-500/50 text-violet-200' : 'bg-[#070b14]/85 border-slate-750 text-slate-400'
+          }`}
+          title="Toggle distant galaxy and nebula point clouds"
+        >
+          <Layers3 className="w-3 h-3" />
+          <span className="hidden lg:inline">Overlays</span>
+        </button>
+
         <button
           onClick={() => setQuality(quality === 'high' ? 'low' : 'high')}
           className="px-2.5 py-1.5 rounded-lg bg-[#070b14]/85 hover:bg-slate-800/80 border border-slate-750 text-slate-300 text-xs font-mono flex items-center gap-1.5 transition-colors cursor-pointer"
@@ -479,51 +538,30 @@ export function UniverseScene({
         </button>
       </div>
 
-      {/* Target Quick Switcher Bar at Bottom */}
+      {/* Compact flight status replaces the former row of destination buttons. */}
       <div className="absolute bottom-4 left-4 right-4 z-20 flex flex-wrap items-center justify-between gap-2 pointer-events-none">
-        <div className="flex flex-wrap items-center gap-1.5 pointer-events-auto">
-          <span className="text-[10px] font-mono text-slate-400 uppercase tracking-wider mr-1 hidden sm:inline">
-            Focus System:
+        <div className="flex items-center gap-2 pointer-events-auto rounded-lg bg-[#070b14]/88 border border-slate-800 px-2.5 py-1.5">
+          <span className="h-1.5 w-1.5 rounded-full bg-cyan-400 shadow-[0_0_8px_rgba(34,211,238,.85)]" />
+          <span className="text-[10px] font-mono text-slate-400 uppercase tracking-wider">View</span>
+          <span className="text-xs font-mono text-slate-200">
+            {activeTarget ? activeTarget.type === 'star' ? `System · ${activeTarget.star.name}` : `Planet · ${activeTarget.planet.name}` : 'Wide universe'}
           </span>
-          {celestialObjects.map((obj) => {
-            const isSelected =
-              activeTarget?.type === 'star'
-                ? activeTarget.star.id === obj.id
-                : activeTarget?.parentStar.id === obj.id
-
-            return (
-              <button
-                key={obj.id}
-                onClick={() => handleSelectStar(obj)}
-                className={`px-2.5 py-1 rounded-md text-xs font-mono border transition-all cursor-pointer ${
-                  isSelected
-                    ? 'bg-cyan-500 text-slate-950 font-bold border-cyan-400 shadow-[0_0_12px_rgba(6,182,212,0.4)]'
-                    : 'bg-[#070b14]/85 text-slate-300 border-slate-750 hover:border-cyan-500/50 hover:text-white'
-                }`}
-              >
-                {obj.name}
-              </button>
-            )
-          })}
         </div>
 
         <div className="text-[10px] font-mono text-slate-400 bg-[#070b14]/80 px-2 py-1 rounded border border-slate-800 hidden md:block">
-          Click Star/Planet: Inspect · Drag: Rotate · Scroll: Zoom
+          Select: Focus · Drag: Rotate · Scroll: Zoom · Right drag: Pan
         </div>
       </div>
 
       {/* Interactive Celestial Details Panel */}
-      <CelestialDetailsPanel
+      {detailsVisible && <CelestialDetailsPanel
         target={activeTarget}
-        onClose={() => {
-          setActiveTarget(null)
-          setSelectedPlanetId(undefined)
-        }}
+        onClose={handleDeselect}
         onSelectStar={handleSelectStar}
         onSelectPlanet={handleSelectPlanet}
         onAnalyzeLightCurve={onAnalyzeLightCurve}
         onResetView={handleResetCamera}
-      />
+      />}
     </div>
   )
 }

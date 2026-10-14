@@ -5,9 +5,7 @@ import {
   Globe,
   ExternalLink,
   Layers,
-  Thermometer,
   Activity,
-  AlertCircle,
   Compass,
   ArrowRight,
   Info,
@@ -350,11 +348,11 @@ export function CelestialDetailsPanel({
           <div className="p-2.5 rounded-xl bg-slate-900/40 border border-slate-800 space-y-1 text-[11px]">
             <div className="flex justify-between">
               <span className="text-slate-400">Discovery Facility:</span>
-              <span className="text-slate-200 font-mono text-right">{planet.discoveryFacility || 'Ground / Space Survey'}</span>
+              <span className="text-slate-200 font-mono text-right">{planet.discoveryFacility || 'Unknown'}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-slate-400">Discovery Year:</span>
-              <span className="text-slate-200 font-mono">{planet.discoveryYear || 'Cataloged'}</span>
+              <span className="text-slate-200 font-mono">{planet.discoveryYear ?? 'Unknown'}</span>
             </div>
           </div>
         )}
@@ -369,14 +367,13 @@ export function CelestialDetailsPanel({
           <div className="text-slate-400">
             Citation:{' '}
             <span className="text-slate-300 italic">
-              {(isStar ? star.sourceCitation : planet?.sourceCitation) ||
-                'NASA Exoplanet Archive, Caltech/IPAC; SIMBAD CDS.'}
+              {(isStar ? star.sourceCitation : planet?.sourceCitation) || 'Not provided in the selected record.'}
             </span>
           </div>
 
           <div className="flex items-center justify-between pt-1 border-t border-slate-800">
             <span className="text-[10px] text-slate-400 font-mono">
-              Retrieved: {(isStar ? star.retrievalDate : planet?.retrievalDate) || '2026-10-14'}
+              Retrieved: {(isStar ? star.retrievalDate : planet?.retrievalDate) || 'Unknown'}
             </span>
             {((isStar ? star.sourceUrl : planet?.sourceUrl)) && (
               <a
