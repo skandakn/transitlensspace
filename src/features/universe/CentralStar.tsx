@@ -40,10 +40,17 @@ export function CentralStar({
 
   return (
     <group>
-      {/* 1. Star Core (Intense emission, toneMapped=false for vibrant bloom) */}
+      {/* 1. Hot stellar photosphere: emissive enough to read at distance, shaded enough for depth nearby. */}
       <mesh>
-        <sphereGeometry args={[radius, 32, 32]} />
-        <meshBasicMaterial color={color} toneMapped={false} />
+        <sphereGeometry args={[radius, 48, 36]} />
+        <meshStandardMaterial
+          color={color}
+          emissive={color}
+          emissiveIntensity={1.4}
+          roughness={0.82}
+          metalness={0}
+          toneMapped={false}
+        />
       </mesh>
 
       {/* 2. Inner Corona Layer (Additive Blending) */}
@@ -52,7 +59,7 @@ export function CentralStar({
         <meshBasicMaterial
           color={coronaColor}
           transparent
-          opacity={0.45}
+          opacity={0.33}
           blending={THREE.AdditiveBlending}
           side={THREE.BackSide}
           depthWrite={false}
@@ -65,7 +72,7 @@ export function CentralStar({
         <meshBasicMaterial
           color={coronaColor}
           transparent
-          opacity={0.18}
+          opacity={0.12}
           blending={THREE.AdditiveBlending}
           side={THREE.BackSide}
           depthWrite={false}

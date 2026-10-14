@@ -1,0 +1,64 @@
+{
+  "observations": [
+    {
+      "id": "kepler-90-q5",
+      "displayName": "Kepler-90 — Kepler Quarter 05",
+      "file": "kepler-90-q5.csv",
+      "source": "NASA MAST Kepler archive, accessed with Lightkurve 2.6.0",
+      "sourceUrl": "https://archive.stsci.edu/missions-and-data/kepler",
+      "mission": "Kepler",
+      "product": "Kepler Quarter 05, long cadence, Kepler pipeline",
+      "targetIdentifier": "KIC 11442793",
+      "retrievedAt": "2026-10-14T18:14:34Z",
+      "processing": "remove NaNs; remove 8-sigma outliers; normalize; bin to 20-minute cadences",
+      "star": {
+        "id": "KIC-11442793",
+        "name": "Kepler-90",
+        "catalogId": "KIC 11442793",
+        "mission": "Kepler",
+        "sectorOrQuarter": "Quarter 05",
+        "ra": 284.4335,
+        "dec": 41.7348,
+        "magnitude": 14.0,
+        "temperature": 6080,
+        "stellarRadius": 1.2,
+        "stellarMass": 1.2,
+        "spectralType": "G0V",
+        "distanceParsecs": 870.0,
+        "observationDate": "2010-03-20",
+        "numPoints": 0,
+        "description": "Bundled NASA Kepler PDC-SAP photometry for the Kepler-90 host star."
+      }
+    },
+    {
+      "id": "toi-700-s27",
+      "displayName": "TOI-700 — TESS Sector 27",
+      "file": "toi-700-s27.csv",
+      "source": "NASA MAST TESS archive, accessed with Lightkurve 2.6.0",
+      "sourceUrl": "https://archive.stsci.edu/missions-and-data/tess",
+      "mission": "TESS",
+      "product": "TESS Sector 27, 20-second SPOC cadence",
+      "targetIdentifier": "TIC 261136679",
+      "retrievedAt": "2026-10-14T18:15:10Z",
+      "processing": "remove NaNs; remove 8-sigma outliers; normalize; bin to 20-minute cadences",
+      "star": {
+        "id": "TIC-261136679",
+        "name": "TOI-700",
+        "catalogId": "TIC 261136679",
+        "mission": "TESS",
+        "sectorOrQuarter": "Sector 27",
+        "ra": 97.0969,
+        "dec": -65.5794,
+        "magnitude": 13.15,
+        "temperature": 3480,
+        "stellarRadius": 0.42,
+        "stellarMass": 0.41,
+        "spectralType": "M2V",
+        "distanceParsecs": 31.13,
+        "observationDate": "2020-07-04",
+        "numPoints": 0,
+        "description": "Bundled NASA TESS SPOC photometry for the TOI-700 host star."
+      }
+    }
+  ]
+}
