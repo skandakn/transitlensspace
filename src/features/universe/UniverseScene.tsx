@@ -47,49 +47,61 @@ function checkWebGLSupport(): boolean {
 /**
  * Camera Controller that smoothly flies to and focuses on selected star systems or planets
  */
+function planetWorldPosition(parent: CelestialObject, planet: CelestialPlanet, elapsed: number) {
+  const seed = Array.from(planet.id).reduce((value, character) => (value * 31 + character.charCodeAt(0)) % 1000, 0)
+  const angle = (seed / 1000) * Math.PI * 2 + planet.orbitSpeed * 0.4 * elapsed
+  const distance = planet.distanceFromStar
+  const inclination = planet.orbitInclination || 0
+  return new THREE.Vector3(
+    parent.position[0] + Math.cos(angle) * distance,
+    parent.position[1] + Math.sin(angle) * Math.sin(inclination) * distance * 0.4,
+    parent.position[2] + Math.sin(angle) * distance,
+  )
+}
+
 function CameraController({
-  targetPosition,
+  target,
   initialPosition = [0, 45, 120],
   resetTrigger = 0
 }: {
-  targetPosition?: [number, number, number] | null
+  target: SelectedTarget
   initialPosition?: [number, number, number]
   resetTrigger?: number
 }) {
   const { camera } = useThree()
   const controlsRef = useRef<any>(null)
-  const targetLookAt = useRef(new THREE.Vector3(0, 0, 0))
-  const isResetting = useRef(false)
+  const desiredTarget = useRef(new THREE.Vector3())
+  const desiredPosition = useRef(new THREE.Vector3(...initialPosition))
+  const flightDirection = useRef(new THREE.Vector3(0.35, 0.18, 1).normalize())
+  const previousKey = useRef('')
 
-  useEffect(() => {
-    if (resetTrigger > 0) {
-      targetLookAt.current.set(0, 0, 0)
-      isResetting.current = true
-    }
-  }, [resetTrigger])
-
-  useEffect(() => {
-    if (targetPosition) {
-      isResetting.current = false
-      targetLookAt.current.set(...targetPosition)
-    }
-  }, [targetPosition])
-
-  useFrame((_, delta) => {
+  useFrame(({ clock }, delta) => {
     if (!controlsRef.current) return
+    const key = target ? target.type === 'star' ? `star:${target.star.id}` : `planet:${target.planet.id}` : `wide:${resetTrigger}`
+    const focus = target
+      ? target.type === 'star'
+        ? new THREE.Vector3(...target.star.position)
+        : planetWorldPosition(target.parentStar, target.planet, clock.getElapsedTime())
+      : new THREE.Vector3()
 
-    // Smoothly interpolate look-at target
-    controlsRef.current.target.lerp(targetLookAt.current, delta * 3.5)
-
-    // Smoothly restore initial camera position on reset
-    if (isResetting.current) {
-      const initVec = new THREE.Vector3(...initialPosition)
-      camera.position.lerp(initVec, delta * 2.5)
-      if (camera.position.distanceTo(initVec) < 0.5) {
-        isResetting.current = false
-      }
+    if (key !== previousKey.current) {
+      const offset = camera.position.clone().sub(focus)
+      if (offset.lengthSq() > 0.001) flightDirection.current.copy(offset.normalize())
+      previousKey.current = key
     }
 
+    desiredTarget.current.copy(focus)
+    if (target) {
+      const radius = target.type === 'star' ? target.star.radius : target.planet.radius
+      const distance = THREE.MathUtils.clamp(Math.max(radius * 7.2, target.type === 'star' ? 12.5 : 5.5), 5.5, 32)
+      desiredPosition.current.copy(focus).addScaledVector(flightDirection.current, distance)
+    } else {
+      desiredPosition.current.set(...initialPosition)
+    }
+
+    const smoothing = 1 - Math.exp(-3.1 * delta)
+    camera.position.lerp(desiredPosition.current, smoothing)
+    controlsRef.current.target.lerp(desiredTarget.current, smoothing)
     controlsRef.current.update()
   })
 
@@ -101,6 +113,9 @@ function CameraController({
       minDistance={6}
       maxDistance={450}
       maxPolarAngle={Math.PI / 2 + 0.3}
+      rotateSpeed={0.58}
+      zoomSpeed={0.78}
+      panSpeed={0.7}
     />
   )
 }
@@ -234,15 +249,6 @@ export function UniverseScene({
     return searchCelestialCatalog(searchQuery)
   }, [searchQuery])
 
-  // Target camera focus position
-  const targetCameraPos = useMemo<[number, number, number] | null>(() => {
-    if (!activeTarget) return null
-    if (activeTarget.type === 'star') {
-      return activeTarget.star.position
-    }
-    return activeTarget.parentStar.position
-  }, [activeTarget])
-
   const handleSelectStar = (star: CelestialObject) => {
     setUserSelectedTarget({ type: 'star', star })
     setUserSelectedPlanetId(undefined)
@@ -280,6 +286,7 @@ export function UniverseScene({
       {/* 3D Canvas Scene */}
       <Suspense fallback={<UniverseLoader />}>
         <Canvas
+          onPointerMissed={handleResetCamera}
           camera={{
             position: initialCameraPosition,
             fov: 50,
@@ -302,7 +309,7 @@ export function UniverseScene({
 
           {/* Interactive Camera Controller */}
           <CameraController
-            targetPosition={targetCameraPos}
+            target={activeTarget}
             initialPosition={initialCameraPosition}
             resetTrigger={resetTrigger}
           />

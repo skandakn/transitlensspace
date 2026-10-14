@@ -19,6 +19,28 @@ function createPRNG(seed = 42) {
   }
 }
 
+/** Soft sprite shared by the distant structures so point clouds never read as squares. */
+function useCosmicSprite() {
+  return useMemo(() => {
+    const canvas = document.createElement('canvas')
+    canvas.width = 64
+    canvas.height = 64
+    const context = canvas.getContext('2d')
+    if (context) {
+      const glow = context.createRadialGradient(32, 32, 0, 32, 32, 32)
+      glow.addColorStop(0, 'rgba(255,255,255,1)')
+      glow.addColorStop(0.18, 'rgba(255,255,255,0.9)')
+      glow.addColorStop(0.55, 'rgba(255,255,255,0.22)')
+      glow.addColorStop(1, 'rgba(255,255,255,0)')
+      context.fillStyle = glow
+      context.fillRect(0, 0, 64, 64)
+    }
+    const texture = new THREE.CanvasTexture(canvas)
+    texture.needsUpdate = true
+    return texture
+  }, [])
+}
+
 /**
  * Distant Spiral Galaxy component
  */
@@ -28,7 +50,7 @@ export function DistantGalaxy({
   colorCore = '#fffbeb',
   colorArms = '#818cf8',
   armCount = 2,
-  particleCount = 1800
+  particleCount = 1100
 }: {
   position?: [number, number, number]
   scale?: number
@@ -38,6 +60,7 @@ export function DistantGalaxy({
   particleCount?: number
 }) {
   const galaxyRef = useRef<THREE.Points>(null)
+  const sprite = useCosmicSprite()
 
   const { positions, colors } = useMemo(() => {
     const rand = createPRNG(1001)
@@ -47,22 +70,21 @@ export function DistantGalaxy({
     const cArms = new THREE.Color(colorArms)
 
     for (let i = 0; i < particleCount; i++) {
-      // Logarithmic spiral r = a * exp(b * theta)
-      const r = Math.pow(rand(), 2) * scale
-      const branchAngle = ((i % armCount) * 2 * Math.PI) / armCount
-      const spinAngle = r * 0.15
+      const inCore = i < particleCount * 0.18
+      const r = inCore ? Math.pow(rand(), 2.8) * scale * 0.22 : (0.14 + Math.pow(rand(), 0.72) * 0.86) * scale
+      const arm = Math.floor(rand() * armCount)
+      const branchAngle = (arm * Math.PI * 2) / armCount
+      const spiral = r * 0.19
+      const spread = inCore ? scale * 0.055 : Math.max(0.45, r * 0.052)
+      const jitter = (rand() - 0.5) * spread
+      const angle = branchAngle + spiral + jitter / Math.max(r, 1)
+      const radialJitter = (rand() - 0.5) * spread * 1.65
 
-      // Random dispersion around arm
-      const randomX = Math.pow(rand(), 3) * (rand() < 0.5 ? 1 : -1) * (r * 0.15 + 0.5)
-      const randomY = Math.pow(rand(), 3) * (rand() < 0.5 ? 1 : -1) * (r * 0.08 + 0.3)
-      const randomZ = Math.pow(rand(), 3) * (rand() < 0.5 ? 1 : -1) * (r * 0.15 + 0.5)
+      pos[i * 3] = Math.cos(angle) * (r + radialJitter)
+      pos[i * 3 + 1] = (rand() - 0.5) * (inCore ? scale * 0.055 : Math.max(0.25, r * 0.018))
+      pos[i * 3 + 2] = Math.sin(angle) * (r + radialJitter)
 
-      pos[i * 3] = Math.cos(branchAngle + spinAngle) * r + randomX
-      pos[i * 3 + 1] = randomY
-      pos[i * 3 + 2] = Math.sin(branchAngle + spinAngle) * r + randomZ
-
-      // Color interpolation: core is bright yellow-white, arms are violet/cyan
-      const mixedColor = cCore.clone().lerp(cArms, r / scale)
+      const mixedColor = cCore.clone().lerp(cArms, Math.min(1, r / scale))
       col[i * 3] = mixedColor.r
       col[i * 3 + 1] = mixedColor.g
       col[i * 3 + 2] = mixedColor.b
@@ -79,16 +101,21 @@ export function DistantGalaxy({
 
   return (
     <group position={position} rotation={[0.4, 0.3, 0.5]}>
+      <sprite scale={[scale * 0.72, scale * 0.72, 1]}>
+        <spriteMaterial map={sprite} color={colorCore} transparent opacity={0.22} depthWrite={false} blending={THREE.AdditiveBlending} />
+      </sprite>
       <points ref={galaxyRef}>
         <bufferGeometry>
           <bufferAttribute attach="attributes-position" args={[positions, 3]} />
           <bufferAttribute attach="attributes-color" args={[colors, 3]} />
         </bufferGeometry>
         <pointsMaterial
-          size={2.2}
+          size={1.08}
+          map={sprite}
           vertexColors
           transparent
-          opacity={0.7}
+          opacity={0.68}
+          alphaTest={0.03}
           blending={THREE.AdditiveBlending}
           depthWrite={false}
         />
@@ -104,11 +131,12 @@ export function Nebula({
   position = [-120, -40, -180],
   colorA = '#6366f1', // Indigo / violet
   colorB = '#06b6d4', // Cyan
-  particleCount = 1200,
+  particleCount = 560,
   scale = 65,
   enableMotion = true
 }: NebulaProps) {
   const nebulaRef = useRef<THREE.Group>(null)
+  const sprite = useCosmicSprite()
 
   const { positions, colors } = useMemo(() => {
     const rand = createPRNG(2024)
@@ -154,10 +182,12 @@ export function Nebula({
           <bufferAttribute attach="attributes-color" args={[colors, 3]} />
         </bufferGeometry>
         <pointsMaterial
-          size={5.5}
+          size={3.2}
+          map={sprite}
           vertexColors
           transparent
-          opacity={0.35}
+          opacity={0.22}
+          alphaTest={0.03}
           blending={THREE.AdditiveBlending}
           depthWrite={false}
         />

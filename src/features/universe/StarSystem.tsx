@@ -35,7 +35,9 @@ function PlanetOrbiter({
   onSelectPlanet
 }: PlanetOrbiterProps) {
   const planetRef = useRef<THREE.Group>(null)
+  const cloudsRef = useRef<THREE.Mesh>(null)
   const angleRef = useRef<number>(0)
+  const pointerDownRef = useRef<[number, number] | null>(null)
   const [isHovered, setIsHovered] = useState(false)
 
   // Initialize deterministic starting phase based on planet distance/name
@@ -48,8 +50,8 @@ function PlanetOrbiter({
   }, [planet.name])
 
   useFrame((_, delta) => {
-    if (!enableMotion || !planetRef.current) return
-    angleRef.current += planet.orbitSpeed * 0.4 * delta
+    if (!planetRef.current) return
+    if (enableMotion) angleRef.current += planet.orbitSpeed * 0.4 * delta
     const d = planet.distanceFromStar
     const inc = planet.orbitInclination || 0
 
@@ -58,6 +60,8 @@ function PlanetOrbiter({
     const y = Math.sin(angleRef.current) * Math.sin(inc) * (d * 0.4)
 
     planetRef.current.position.set(x, y, z)
+    planetRef.current.rotation.y += delta * 0.16
+    if (cloudsRef.current) cloudsRef.current.rotation.y += delta * 0.035
   })
 
   return (
@@ -66,7 +70,13 @@ function PlanetOrbiter({
       <mesh
         castShadow
         receiveShadow
+        onPointerDown={(e) => {
+          pointerDownRef.current = [e.clientX, e.clientY]
+        }}
         onClick={(e) => {
+          const start = pointerDownRef.current
+          pointerDownRef.current = null
+          if (start && Math.hypot(e.clientX - start[0], e.clientY - start[1]) > 7) return
           e.stopPropagation()
           onSelectPlanet?.(planet)
         }}
@@ -80,20 +90,26 @@ function PlanetOrbiter({
           document.body.style.cursor = 'auto'
         }}
       >
-        <sphereGeometry args={[planet.radius * (isHovered ? 1.15 : 1), 22, 22]} />
+        <sphereGeometry args={[planet.radius * (isHovered ? 1.1 : 1), 36, 28]} />
         <meshStandardMaterial
           color={planet.color}
-          roughness={0.6}
-          metalness={0.2}
-          emissive={isSelected ? '#10b981' : isHovered ? '#38bdf8' : '#000000'}
-          emissiveIntensity={isSelected ? 0.4 : isHovered ? 0.25 : 0}
+          roughness={planet.hasRings ? 0.44 : 0.72}
+          metalness={planet.hasRings ? 0.1 : 0.02}
+          emissive={isSelected ? '#06b6d4' : isHovered ? '#38bdf8' : '#000000'}
+          emissiveIntensity={isSelected ? 0.3 : isHovered ? 0.16 : 0}
         />
+      </mesh>
+
+      {/* A quiet cloud shell creates parallax on rotation without a heavy texture pipeline. */}
+      <mesh ref={cloudsRef} rotation={[0.1, 0, 0]}>
+        <sphereGeometry args={[planet.radius * 1.026, 32, 24]} />
+        <meshBasicMaterial color="#d8f3ff" transparent opacity={planet.hasRings ? 0.055 : 0.1} depthWrite={false} />
       </mesh>
 
       {/* Atmospheric Rim Glow */}
       {planet.atmosphereColor && (
         <mesh>
-          <sphereGeometry args={[planet.radius * 1.18, 16, 16]} />
+          <sphereGeometry args={[planet.radius * 1.12, 32, 24]} />
           <meshBasicMaterial
             color={planet.atmosphereColor}
             transparent
@@ -120,7 +136,7 @@ function PlanetOrbiter({
       {/* Planetary Ring (e.g. for gas giants like Kepler-90 h) */}
       {planet.hasRings && (
         <mesh rotation={[-Math.PI / 3, 0.2, 0]}>
-          <ringGeometry args={[planet.radius * 1.5, planet.radius * 2.3, 32]} />
+          <ringGeometry args={[planet.radius * (planet.ringRadius?.[0] || 1.5), planet.radius * (planet.ringRadius?.[1] || 2.3), 64]} />
           <meshStandardMaterial
             color={planet.color}
             side={THREE.DoubleSide}
@@ -278,6 +294,7 @@ export function StarSystem({
   enableMotion = true
 }: StarSystemProps) {
   const [localHovered, setLocalHovered] = useState(false)
+  const pointerDownRef = useRef<[number, number] | null>(null)
   const activeHover = isHovered || localHovered
 
   const handlePointerOver = (e: any) => {
@@ -294,6 +311,9 @@ export function StarSystem({
   }
 
   const handleClick = (e: any) => {
+    const start = pointerDownRef.current
+    pointerDownRef.current = null
+    if (start && Math.hypot(e.clientX - start[0], e.clientY - start[1]) > 7) return
     e.stopPropagation()
     onSelect?.(system)
   }
@@ -302,13 +322,15 @@ export function StarSystem({
     <group position={system.position}>
       {/* Click / Hover Target Sphere */}
       <mesh
-        visible={false}
+        onPointerDown={(e) => {
+          pointerDownRef.current = [e.clientX, e.clientY]
+        }}
         onPointerOver={handlePointerOver}
         onPointerOut={handlePointerOut}
         onClick={handleClick}
       >
         <sphereGeometry args={[system.radius * 2.5, 16, 16]} />
-        <meshBasicMaterial transparent opacity={0} />
+        <meshBasicMaterial transparent opacity={0} depthWrite={false} />
       </mesh>
 
       {/* Central Star with Physical Glow */}
@@ -345,7 +367,7 @@ export function StarSystem({
       ))}
 
       {/* Native WebGL 3D Billboard Sprite Label */}
-      {showLabels && (
+      {showLabels && (isSelected || activeHover) && (
         <StarSpriteLabel
           name={system.name}
           spectralType={system.spectralType}

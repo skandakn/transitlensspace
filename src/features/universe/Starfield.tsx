@@ -24,14 +24,14 @@ function createPRNG(seed: number) {
  * with varying astronomical colors, sizes, and real-time twinkling.
  */
 export function Starfield({
-  count = 9000,
+  count = 6200,
   radiusMin = 60,
   radiusMax = 650,
   enableTwinkle = true,
   quality = 'high'
 }: StarfieldProps) {
   const pointsRef = useRef<THREE.Points>(null)
-  const actualCount = quality === 'low' ? Math.min(count, 4000) : count
+  const actualCount = quality === 'low' ? Math.min(count, 2600) : count
 
   // Generate spherical distribution with astronomical color temperatures
   const { positions, colors } = useMemo(() => {
@@ -114,11 +114,12 @@ export function Starfield({
         />
       </bufferGeometry>
       <pointsMaterial
-        size={1.8}
+        size={quality === 'high' ? 0.86 : 0.72}
         map={starTexture}
         vertexColors
         transparent
-        opacity={0.9}
+        opacity={0.78}
+        alphaTest={0.035}
         sizeAttenuation
         blending={THREE.AdditiveBlending}
         depthWrite={false}
