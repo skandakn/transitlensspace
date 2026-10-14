@@ -61,7 +61,9 @@ export function useAnalysisWorkflow({
   const canAnalyze = (backendDatasetId ? true : validation.valid) && status !== 'running'
 
   const runAnalysis = useCallback(async (): Promise<AnalysisResult | null> => {
-    if (!validation.valid) {
+    // Bundled NASA observations are fetched by the analysis service. They begin
+    // with no browser-side samples, so validate them after retrieval instead.
+    if (!backendDatasetId && !validation.valid) {
       setError(validation.reason || 'Cannot run analysis: Invalid observation data.')
       setStatus('failed')
       return null
