@@ -32,18 +32,19 @@ export function CosmicRadarWidget({ isCollapsed = false }: CosmicRadarWidgetProp
     return <MiniCosmicRadarOrb />
   }
 
-  return (
-    <div className="relative flex-1 min-h-[150px] my-1.5 rounded-2xl bg-gradient-to-b from-slate-950/80 via-purple-950/40 to-slate-950/90 border border-violet-500/35 backdrop-blur-md shadow-[0_0_24px_rgba(139,92,246,0.22)] overflow-hidden select-none">
-      {/* Pure starfield canvas — no UI overlay */}
-      <StarfieldCanvas />
-    </div>
-  )
+  // Expanded mode: animation runs directly in the sidebar background, no separate box
+  return null
 }
 
 /**
- * Pure animated starfield — drifting star particles and occasional cosmic ray streaks only.
+ * Pure animated starfield — drifting star particles and occasional cosmic ray streaks.
+ * Designed to run as a full background layer without any enclosing box.
  */
-function StarfieldCanvas() {
+export function StarfieldCanvas({
+  className = 'absolute inset-0 w-full h-full pointer-events-none'
+}: {
+  className?: string
+}) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
 
   useEffect(() => {
@@ -56,18 +57,18 @@ function StarfieldCanvas() {
     let cosmicRays: CosmicRay[] = []
     let lastRayTime = Date.now()
 
-    let width = canvas.offsetWidth
-    let height = canvas.offsetHeight
+    let width = canvas.offsetWidth || 288
+    let height = canvas.offsetHeight || 900
 
     const colors = ['#38bdf8', '#c084fc', '#f472b6', '#22d3ee', '#a78bfa', '#ffffff', '#34d399']
-    const particles: StarParticle[] = Array.from({ length: 42 }, () => ({
-      x: Math.random() * (width || 250),
-      y: Math.random() * (height || 260),
-      r: Math.random() * 1.6 + 0.5,
+    const particles: StarParticle[] = Array.from({ length: 60 }, () => ({
+      x: Math.random() * width,
+      y: Math.random() * height,
+      r: Math.random() * 1.5 + 0.5,
       color: colors[Math.floor(Math.random() * colors.length)],
-      speedY: Math.random() * 0.35 + 0.12,
+      speedY: Math.random() * 0.32 + 0.1,
       speedX: (Math.random() - 0.5) * 0.08,
-      alpha: Math.random() * 0.6 + 0.3,
+      alpha: Math.random() * 0.55 + 0.25,
       pulseSpeed: Math.random() * 0.005 + 0.002,
       pulseOffset: Math.random() * Math.PI * 2
     }))
@@ -75,8 +76,8 @@ function StarfieldCanvas() {
     const handleResize = () => {
       if (!canvas) return
       const dpr = window.devicePixelRatio || 1
-      width = canvas.offsetWidth
-      height = canvas.offsetHeight
+      width = canvas.offsetWidth || 288
+      height = canvas.offsetHeight || 900
       canvas.width = Math.floor(width * dpr)
       canvas.height = Math.floor(height * dpr)
       ctx.resetTransform?.()

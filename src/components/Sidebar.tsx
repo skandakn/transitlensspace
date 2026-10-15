@@ -13,7 +13,7 @@ import {
   X
 } from 'lucide-react'
 import { GithubIcon } from './icons/GithubIcon'
-import { CosmicRadarWidget, MiniCosmicRadarOrb } from './CosmicRadarWidget'
+import { StarfieldCanvas, MiniCosmicRadarOrb } from './CosmicRadarWidget'
 import type { NavigationTab } from '../types'
 import { cn } from '../lib/utils'
 
@@ -133,6 +133,9 @@ export function Sidebar({
           {/* Minimal contrast overlay ensuring text legibility without dimming the purple cosmic nebulae */}
           <div className="absolute inset-0 bg-[#050811]/20" />
           <div className="absolute inset-0 bg-gradient-to-r from-[#050811]/45 via-transparent to-[#050811]/30" />
+
+          {/* Full-height animated starfield & cosmic ray streaks in background */}
+          <StarfieldCanvas />
         </div>
 
         {/* Ambient violet-cyan edge highlight */}
@@ -328,11 +331,11 @@ export function Sidebar({
             })}
           </div>
 
-          {/* Animated Cosmic Observatory filling the empty vertical space */}
-          {isCollapsed ? (
-            <MiniCosmicRadarOrb />
-          ) : (
-            <CosmicRadarWidget />
+          {/* Collapsed state mini radar orb */}
+          {isCollapsed && (
+            <div className="mt-auto pt-2 flex justify-center">
+              <MiniCosmicRadarOrb />
+            </div>
           )}
         </div>
 
