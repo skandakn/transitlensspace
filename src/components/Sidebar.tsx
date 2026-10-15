@@ -148,15 +148,6 @@ export function Sidebar({
           'relative z-10 pt-2.5 px-3 transition-all duration-300 flex-shrink-0',
           isCollapsed ? 'flex flex-col items-center pb-2' : 'pb-2'
         )}>
-          {/* Top Option 2 reference badge matching reference image */}
-          {!isCollapsed && (
-            <div className="flex justify-center mb-2">
-              <span className="px-3.5 py-0.5 rounded-full border border-cyan-400/50 bg-slate-900/80 text-[9px] font-mono tracking-widest text-cyan-300 shadow-[0_0_12px_rgba(6,182,212,0.3)] backdrop-blur-md">
-                OPTION 2
-              </span>
-            </div>
-          )}
-
           {/* Brand Card: Cyan-lit Logo Container & Typography */}
           <div className={cn(
             'flex items-center',
