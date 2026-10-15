@@ -164,7 +164,7 @@ export const PREDEFINED_OBSERVATIONS: PredefinedObservation[] = [
       numPoints: 1344,
       description: 'G-type star hosting 8 confirmed planets, demonstrating multi-transit architecture.'
     },
-    lightCurve: []
+    lightCurve: generateSyntheticLightCurve(14.449, 1.25, 0.0048, 4.1, 35, 30)
   },
   {
     id: 'TRAPPIST-1',

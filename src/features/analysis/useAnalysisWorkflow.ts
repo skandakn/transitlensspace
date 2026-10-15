@@ -8,7 +8,7 @@ import type {
   AnalysisParameters
 } from '../../types'
 import { runTransitDetection, validateObservationData, DEFAULT_PARAMETERS } from './transitDetection'
-import { analyzeBundledObservation } from '../../services/transitApi'
+import { analyzeBundledObservation, isTransitApiConfigured } from '../../services/transitApi'
 
 export interface UseAnalysisWorkflowOptions {
   star: StarObservation
@@ -58,12 +58,14 @@ export function useAnalysisWorkflow({
     return validateObservationData(star, lightCurve)
   }, [star, lightCurve])
 
-  const canAnalyze = (backendDatasetId ? true : validation.valid) && status !== 'running'
+  const canAnalyze =
+    ((backendDatasetId && isTransitApiConfigured()) || validation.valid) && status !== 'running'
 
   const runAnalysis = useCallback(async (): Promise<AnalysisResult | null> => {
-    // Bundled NASA observations are fetched by the analysis service. They begin
-    // with no browser-side samples, so validate them after retrieval instead.
-    if (!backendDatasetId && !validation.valid) {
+    const useBackend = Boolean(backendDatasetId && isTransitApiConfigured())
+
+    // If not running through configured backend service, validate browser-side samples
+    if (!useBackend && !validation.valid) {
       setError(validation.reason || 'Cannot run analysis: Invalid observation data.')
       setStatus('failed')
       return null
@@ -80,20 +82,28 @@ export function useAnalysisWorkflow({
     })
 
     try {
-      if (backendDatasetId) {
-        setProgress({
-          status: 'running',
-          progressPercent: 40,
-          currentStage: 'Running Lightkurve Box Least Squares on bundled NASA photometry...',
-          elapsedTimeMs: 0
-        })
-        const backendOutput = await analyzeBundledObservation(backendDatasetId, parameters)
-        onBackendLightCurve?.(backendOutput.lightCurve)
-        setResult(backendOutput.result)
-        setStatus('completed')
-        setProgress(null)
-        onAnalysisCompleted?.(backendOutput.result)
-        return backendOutput.result
+      if (useBackend) {
+        try {
+          setProgress({
+            status: 'running',
+            progressPercent: 40,
+            currentStage: 'Running Lightkurve Box Least Squares on bundled NASA photometry...',
+            elapsedTimeMs: 0
+          })
+          const backendOutput = await analyzeBundledObservation(backendDatasetId!, parameters)
+          onBackendLightCurve?.(backendOutput.lightCurve)
+          setResult(backendOutput.result)
+          setStatus('completed')
+          setProgress(null)
+          onAnalysisCompleted?.(backendOutput.result)
+          return backendOutput.result
+        } catch (backendErr) {
+          console.warn('Backend transit analysis service failed, falling back to browser-side detection engine:', backendErr)
+          // If browser has valid light curve, continue to browser-side analysis; otherwise throw
+          if (!validation.valid) {
+            throw backendErr
+          }
+        }
       }
 
       const detectionResult = await runTransitDetection(

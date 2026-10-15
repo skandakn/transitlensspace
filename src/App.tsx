@@ -417,13 +417,13 @@ function DiscoveryWorkspace({
 
         <div className="target-footnote">
           <span className="footnote-dot" aria-hidden="true" />
-          {currentObs?.backendDatasetId && lightCurve.length === 0 ? (
-            <span className="text-cyan-300">
-              ⊙ Pre-downloaded NASA {currentObs.star.mission} observation is ready. Run analysis to load its measured cadences.
-            </span>
-          ) : lightCurve.length >= 15 ? (
+          {lightCurve.length >= 15 ? (
             <span className="text-emerald-400">
               ✓ {lightCurve.length.toLocaleString()} calibrated photometric cadences loaded and ready for analysis.
+            </span>
+          ) : currentObs?.backendDatasetId ? (
+            <span className="text-cyan-300">
+              ⊙ Pre-downloaded NASA {currentObs.star.mission} observation ready. Run analysis to load cadences.
             </span>
           ) : (
             <span className="text-amber-400">
@@ -507,7 +507,7 @@ export function App() {
   const [mission, setMission] = useState<SpaceMission>('TESS')
   const [lightCurve, setLightCurve] = useState<LightCurvePoint[]>(() => {
     const initialObs = PREDEFINED_OBSERVATIONS.find((o) => o.id === 'TOI-700')
-    return initialObs?.backendDatasetId ? [] : initialObs?.lightCurve || []
+    return initialObs?.lightCurve || []
   })
   const [results, setResults] = useState<AnalysisResult[]>([])
 
@@ -584,7 +584,7 @@ export function App() {
     if (obs) {
       setTargetId(obs.star.name || obs.star.id)
       setMission(obs.star.mission)
-      setLightCurve(obs.backendDatasetId ? [] : obs.lightCurve)
+      setLightCurve(obs.lightCurve || [])
       workflow.resetAnalysis()
     }
   }
