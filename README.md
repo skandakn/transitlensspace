@@ -353,7 +353,7 @@ npm run dev
 Judges can evaluate the end-to-end pipeline in under 60 seconds directly from the **Discovery Workspace**:
 
 1. **Step 1: Select Observation**:
-   - Click the **Judge Evaluation Guide** banner at the top of the workspace or use the **Quick Presets** bar.
+   - Use the **Quick Presets** bar or the predefined dataset dropdown.
    - Choose a known transit signal (**`TOI-700`**) or a quiet baseline control (**`HD-219134`**).
 2. **Step 2: Execute Analysis**:
    - Click **`Analyze Star`** (or **`Run Detection`** in the top bar).
