@@ -13,7 +13,7 @@ import {
   X
 } from 'lucide-react'
 import { GithubIcon } from './icons/GithubIcon'
-import { CosmicRadarWidget, MiniCosmicRadarOrb, StarfieldCanvas } from './CosmicRadarWidget'
+import { StarfieldCanvas } from './CosmicRadarWidget'
 import type { NavigationTab } from '../types'
 import { cn } from '../lib/utils'
 
@@ -330,20 +330,6 @@ export function Sidebar({
               )
             })}
           </div>
-
-          {/* Live Exoplanet Transit & Radar Observatory Animation in sidebar */}
-          {!isCollapsed && (
-            <div className="mt-2.5 flex-1 flex flex-col min-h-[220px]">
-              <CosmicRadarWidget isCollapsed={isCollapsed} />
-            </div>
-          )}
-
-          {/* Collapsed state mini radar orb */}
-          {isCollapsed && (
-            <div className="mt-auto pt-2 flex justify-center">
-              <MiniCosmicRadarOrb />
-            </div>
-          )}
         </div>
 
         {/* =========================================================================
