@@ -13,6 +13,7 @@ import { Badge } from './components/ui/Badge'
 import { ExplorerView } from './features/explorer'
 import { starObservationsToCelestialObjects } from './features/universe'
 import { BUNDLED_CELESTIAL_SYSTEMS } from './data/astronomyData'
+import { DeepSpaceRelayView } from './features/relay/DeepSpaceRelayView'
 import type {
   AnalysisResult,
   LightCurvePoint,
@@ -667,6 +668,13 @@ export function App() {
           onSelectObservation={handleSelectObservation}
           currentObs={currentObs}
           uploadedFileName={uploadedFileName}
+        />
+      )}
+
+      {activeTab === 'relay' && (
+        <DeepSpaceRelayView
+          selectedStar={selectedStar}
+          onNavigateToAnalysis={() => setActiveTab('analysis')}
         />
       )}
 

@@ -10,6 +10,7 @@ import {
   ChevronRight,
   PanelLeftOpen,
   PanelLeftClose,
+  Radio,
   X
 } from 'lucide-react'
 import { GithubIcon } from './icons/GithubIcon'
@@ -69,9 +70,16 @@ export function Sidebar({
     {
       id: 'analysis' as NavigationTab,
       label: 'Transit Analysis',
-      subtitle: 'Light curve BLS/TLS detection',
+      subtitle: 'Native BLS/TLS detection',
       icon: Activity,
       badge: 'Core'
+    },
+    {
+      id: 'relay' as NavigationTab,
+      label: 'Deep Space Relay',
+      subtitle: 'Dynamic radio mesh rerouting',
+      icon: Radio,
+      badge: 'Mesh'
     },
     {
       id: 'stars' as NavigationTab,
