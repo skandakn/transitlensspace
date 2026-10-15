@@ -275,7 +275,7 @@ export function parseAndValidateLightCurve(rawText: string, filename = 'uploaded
   )
 }
 
-function buildSuccessResult(
+export function buildSuccessResult(
   points: LightCurvePoint[],
   skippedRows: number,
   totalParsed: number,

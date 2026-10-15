@@ -9,7 +9,8 @@ import {
   AlertTriangle,
   ArrowRight,
   Database,
-  RefreshCw
+  RefreshCw,
+  Sparkles
 } from 'lucide-react'
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/Card'
 import { Button } from '../../components/ui/Button'
@@ -20,12 +21,21 @@ import {
   generateSampleCsvContent,
   type CsvParseResult
 } from './csvParser'
+import { parseFitsLightCurve } from './fitsParser'
 
 export interface UploadViewProps {
   onLightCurveLoaded?: (points: LightCurvePoint[], filename: string) => void
+  onNavigateToAnalysis?: () => void
+  currentLoadedFile?: string | null
+  currentPointsCount?: number
 }
 
-export function UploadView({ onLightCurveLoaded }: UploadViewProps) {
+export function UploadView({
+  onLightCurveLoaded,
+  onNavigateToAnalysis,
+  currentLoadedFile,
+  currentPointsCount
+}: UploadViewProps) {
   const [dragActive, setDragActive] = useState(false)
   const [selectedFileName, setSelectedFileName] = useState<string | null>(null)
   const [parseResult, setParseResult] = useState<CsvParseResult | null>(null)
@@ -55,8 +65,35 @@ export function UploadView({ onLightCurveLoaded }: UploadViewProps) {
   }
 
   const handleProcessFile = async (file: File) => {
-    const text = await file.text()
-    processContent(text, file.name)
+    setIsLoading(true)
+    setSelectedFileName(file.name)
+    try {
+      const isFits = file.name.toLowerCase().endsWith('.fits') || file.name.toLowerCase().endsWith('.fit')
+      let result: CsvParseResult
+
+      if (isFits) {
+        const buffer = await file.arrayBuffer()
+        result = parseFitsLightCurve(buffer, file.name)
+      } else {
+        const text = await file.text()
+        result = parseAndValidateLightCurve(text, file.name)
+      }
+
+      setParseResult(result)
+
+      if (result.success && result.points.length > 0) {
+        onLightCurveLoaded?.(result.points, file.name)
+      }
+    } catch (err) {
+      setParseResult({
+        success: false,
+        points: [],
+        error: `Unexpected error reading file: ${err instanceof Error ? err.message : String(err)}`,
+        warnings: []
+      })
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   // Predefined demo sample data loaders for judges
@@ -79,18 +116,58 @@ export function UploadView({ onLightCurveLoaded }: UploadViewProps) {
   }
 
   const stats = parseResult?.stats
+  const hasActiveInMemory = Boolean(currentPointsCount && currentPointsCount >= 15)
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
       <div>
         <h1 className="text-xl sm:text-2xl font-bold text-white tracking-wide flex items-center gap-2">
           <UploadCloud className="w-5 h-5 text-cyan-400" />
-          Photometry Ingestion & Validation Hub
+          Photometry Ingestion &amp; Validation Hub
         </h1>
         <p className="text-xs text-slate-400 mt-1">
           Import photometric time series from Kepler, TESS, or ground-based survey observatories with instant data validation
         </p>
       </div>
+
+      {/* Active Light Curve in Memory Banner */}
+      {hasActiveInMemory && (
+        <div className="p-4 rounded-xl bg-gradient-to-r from-cyan-950/40 via-slate-900/90 to-emerald-950/40 border border-cyan-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-[0_0_20px_rgba(6,182,212,0.1)] animate-in fade-in">
+          <div className="flex items-start gap-3">
+            <div className="w-9 h-9 rounded-lg bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shrink-0 mt-0.5">
+              <Database className="w-4 h-4" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-white tracking-wide">
+                  Active Photometry in Memory:
+                </span>
+                <span className="text-xs font-mono font-semibold text-cyan-300">
+                  {currentLoadedFile || 'Uploaded Light Curve'}
+                </span>
+                <Badge variant="success" className="text-[10px]">
+                  Loaded ✓
+                </Badge>
+              </div>
+              <p className="text-[11px] text-slate-300 mt-0.5">
+                {currentPointsCount?.toLocaleString()} calibrated cadences currently loaded and ready for algorithmic transit detection.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            {onNavigateToAnalysis && (
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={onNavigateToAnalysis}
+                rightIcon={<ArrowRight className="w-3.5 h-3.5" />}
+              >
+                Go to Analysis Workspace
+              </Button>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Drop Zone Card */}
       <Card
@@ -116,12 +193,16 @@ export function UploadView({ onLightCurveLoaded }: UploadViewProps) {
           <input
             type="file"
             ref={fileInputRef}
+            onClick={(e) => {
+              // Reset input value so selecting the same file triggers onChange
+              ;(e.target as HTMLInputElement).value = ''
+            }}
             onChange={(e) => {
               if (e.target.files?.[0]) {
                 handleProcessFile(e.target.files[0])
               }
             }}
-            accept=".csv,.tsv,.txt,.json,.dat"
+            accept=".csv,.tsv,.txt,.json,.dat,.fits,.fit"
             className="hidden"
             aria-label="Upload photometric time series file"
           />
@@ -132,10 +213,10 @@ export function UploadView({ onLightCurveLoaded }: UploadViewProps) {
 
           <div className="space-y-1">
             <h3 className="text-base font-bold text-white">
-              Drag & Drop your Light Curve File
+              Drag &amp; Drop your Light Curve File
             </h3>
             <p className="text-xs text-slate-400 max-w-md">
-              Supports CSV, TSV, JSON, and ASCII whitespace files containing <code className="text-cyan-300">time</code> and <code className="text-cyan-300">flux</code> columns.
+              Supports CSV, TSV, JSON, ASCII, and NASA FITS files containing <code className="text-cyan-300">time</code> and <code className="text-cyan-300">flux</code> columns.
             </p>
           </div>
 
@@ -143,6 +224,7 @@ export function UploadView({ onLightCurveLoaded }: UploadViewProps) {
             <Button
               variant="primary"
               size="md"
+              isLoading={isLoading}
               onClick={() => fileInputRef.current?.click()}
               aria-label="Select local file from computer"
             >
@@ -294,6 +376,30 @@ export function UploadView({ onLightCurveLoaded }: UploadViewProps) {
                   </ul>
                 </div>
               )}
+
+              {/* Action Buttons to proceed to Analysis or replace */}
+              <div className="flex flex-wrap items-center justify-end gap-2 pt-2 border-t border-slate-800">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    fileInputRef.current?.click()
+                  }}
+                  leftIcon={<RefreshCw className="w-3.5 h-3.5" />}
+                >
+                  Upload Another File
+                </Button>
+                {onNavigateToAnalysis && (
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={onNavigateToAnalysis}
+                    rightIcon={<ArrowRight className="w-3.5 h-3.5" />}
+                  >
+                    Proceed to Transit Analysis
+                  </Button>
+                )}
+              </div>
             </div>
           )}
         </CardContent>
@@ -316,7 +422,7 @@ export function UploadView({ onLightCurveLoaded }: UploadViewProps) {
               0.0417, 1.000045, 0.00070
             </div>
             <p className="text-[11px] text-slate-400 font-sans">
-              Flux values should be normalized around 1.0. Time in Barycentric Julian Date (BJD) or relative days. Column names are case-insensitive.
+              Flux values should be normalized around 1.0 (raw counts in NASA FITS files are automatically normalized). Column names are case-insensitive.
             </p>
           </CardContent>
         </Card>
@@ -334,7 +440,7 @@ export function UploadView({ onLightCurveLoaded }: UploadViewProps) {
             </p>
             <ul className="list-disc pl-4 space-y-1 text-slate-400 text-[11px]">
               <li><strong className="text-slate-200">Header flexibility:</strong> Accepts time, bjd, t and flux, pdcsap_flux, f, mag.</li>
-              <li><strong className="text-slate-200">Delimiter auto-detection:</strong> Supports comma, tab, semicolon, or whitespace.</li>
+              <li><strong className="text-slate-200">Format support:</strong> Delimited CSV/TSV, whitespace ASCII, JSON, and NASA FITS BinTables.</li>
               <li><strong className="text-slate-200">Rejection of non-finite rows:</strong> Drops NaNs, infinities, and non-positive flux values.</li>
               <li><strong className="text-slate-200">Chronological enforcement:</strong> Automatically sorts out-of-order cadences.</li>
               <li><strong className="text-slate-200">Minimum threshold:</strong> At least 15 valid points required to execute transit detection.</li>

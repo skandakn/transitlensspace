@@ -92,6 +92,7 @@ interface DiscoveryWorkspaceProps {
   selectedObsId: string
   onSelectObservation: (obsId: string) => void
   currentObs?: PredefinedObservation
+  uploadedFileName?: string | null
 }
 
 function DiscoveryWorkspace({
@@ -104,7 +105,8 @@ function DiscoveryWorkspace({
   workflow,
   selectedObsId,
   onSelectObservation,
-  currentObs
+  currentObs,
+  uploadedFileName
 }: DiscoveryWorkspaceProps) {
   return (
     <div className="dashboard-workspace" id="workspace">
@@ -239,6 +241,11 @@ function DiscoveryWorkspace({
                 aria-label="Predefined test observations"
                 className="bg-transparent text-slate-100 font-mono text-xs w-full focus:outline-none cursor-pointer"
               >
+                {selectedObsId === '' && (
+                  <option value="" className="text-cyan-300 bg-slate-900 font-semibold">
+                    📁 Custom Ingested Dataset: {uploadedFileName || targetId || 'Custom Light Curve'} ({lightCurve.length.toLocaleString()} points)
+                  </option>
+                )}
                 <optgroup label="🌟 Known Planetary Transit Signals">
                   <option value="TOI-700">TOI-700 — Bundled NASA TESS Sector 27 [Measured Photometry]</option>
                   <option value="Kepler-90">Kepler-90 — Bundled NASA Kepler Q5 [Measured Photometry]</option>
@@ -305,6 +312,27 @@ function DiscoveryWorkspace({
 
               <div className="w-full text-[11px] text-slate-400 italic">
                 {currentObs.scientificContext}
+              </div>
+            </div>
+          )}
+
+          {!currentObs && lightCurve.length > 0 && (
+            <div className="pt-2 border-t border-slate-800/80 flex flex-wrap items-center justify-between gap-2 text-xs animate-in fade-in">
+              <div className="flex flex-wrap items-center gap-1.5">
+                <Badge variant="cyan" className="text-[10px]">
+                  Custom Ingestion
+                </Badge>
+                <Badge variant="success" className="text-[10px]">
+                  {lightCurve.length.toLocaleString()} Cadences Active
+                </Badge>
+              </div>
+
+              <div className="text-[11px] font-mono text-cyan-300">
+                Source: {uploadedFileName || targetId || 'Custom Light Curve'}
+              </div>
+
+              <div className="w-full text-[11px] text-slate-400 italic">
+                Photometry ingested and loaded directly into the client-side BLS transit detection pipeline.
               </div>
             </div>
           )}
@@ -510,6 +538,7 @@ export function App() {
     return initialObs?.lightCurve || []
   })
   const [results, setResults] = useState<AnalysisResult[]>([])
+  const [uploadedFileName, setUploadedFileName] = useState<string | null>(null)
 
   const currentObs = useMemo(() => {
     return PREDEFINED_OBSERVATIONS.find((o) => o.id === selectedObsId)
@@ -580,11 +609,13 @@ export function App() {
 
   const handleSelectObservation = (obsId: string) => {
     setSelectedObsId(obsId)
+    if (!obsId) return
     const obs = PREDEFINED_OBSERVATIONS.find((o) => o.id === obsId)
     if (obs) {
       setTargetId(obs.star.name || obs.star.id)
       setMission(obs.star.mission)
       setLightCurve(obs.lightCurve || [])
+      setUploadedFileName(null)
       workflow.resetAnalysis()
     }
   }
@@ -695,6 +726,7 @@ export function App() {
           selectedObsId={selectedObsId}
           onSelectObservation={handleSelectObservation}
           currentObs={currentObs}
+          uploadedFileName={uploadedFileName}
         />
       )}
 
@@ -715,11 +747,15 @@ export function App() {
             setSelectedObsId('')
             setLightCurve(points)
             if (filename) {
-              setTargetId(filename.replace(/(\.csv|\.fits|\.json|\.tsv)$/i, ''))
+              const cleanName = filename.replace(/(\.csv|\.fits|\.fit|\.json|\.tsv|\.txt|\.dat)$/i, '')
+              setTargetId(cleanName)
+              setUploadedFileName(filename)
             }
             workflow.resetAnalysis()
-            setActiveTab('analysis')
           }}
+          onNavigateToAnalysis={() => setActiveTab('analysis')}
+          currentLoadedFile={uploadedFileName || (selectedObsId === '' && targetId ? targetId : null)}
+          currentPointsCount={lightCurve.length}
         />
       )}
 
