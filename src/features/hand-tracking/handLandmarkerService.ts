@@ -59,9 +59,9 @@ export class HandLandmarkerService {
             },
             runningMode: 'VIDEO',
             numHands: config.numHands || 2,
-            minHandDetectionConfidence: 0.5,
-            minHandPresenceConfidence: 0.5,
-            minTrackingConfidence: 0.5
+            minHandDetectionConfidence: config.minHandDetectionConfidence,
+            minHandPresenceConfidence: config.minHandPresenceConfidence,
+            minTrackingConfidence: config.minTrackingConfidence
           })
         } catch (gpuErr) {
           console.warn(
@@ -76,9 +76,9 @@ export class HandLandmarkerService {
             },
             runningMode: 'VIDEO',
             numHands: config.numHands || 2,
-            minHandDetectionConfidence: 0.5,
-            minHandPresenceConfidence: 0.5,
-            minTrackingConfidence: 0.5
+            minHandDetectionConfidence: config.minHandDetectionConfidence,
+            minHandPresenceConfidence: config.minHandPresenceConfidence,
+            minTrackingConfidence: config.minTrackingConfidence
           })
         }
 

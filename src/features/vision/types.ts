@@ -104,10 +104,6 @@ export interface VisionHUDProps {
   handTracking?: HandTrackingState
   /** Whether a target object is currently selected and displaying a reticle */
   hasSelectedTarget?: boolean
-  /** Callback when user selects a target via pinch gesture */
-  onPinchSelect?: () => void
-  /** Callback when hand movement triggers navigation rotation */
-  onHandNavigate?: (deltaX: number, deltaY: number) => void
   /** Callback when head orientation updates subtle camera adjustment */
   onHeadOrient?: (orientation: HeadOrientation) => void
   /** Optional custom class name */

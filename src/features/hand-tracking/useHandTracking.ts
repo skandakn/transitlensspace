@@ -10,6 +10,7 @@ import type {
   GestureFrame,
   HandTrackingConfig,
   HandTrackingStatus,
+  HandGestureType,
   SingleHandData,
   TwoHandData
 } from '../../types/gestures'
@@ -126,6 +127,11 @@ export function useHandTracking(
 
   // Tracking history refs
   const prevHandsRef = useRef<{ [key: string]: SingleHandData }>({})
+  const gestureHistoryRef = useRef<Record<string, {
+    candidate: HandGestureType
+    frames: number
+    stable: HandGestureType
+  }>>({})
   const prevTwoHandRef = useRef<TwoHandData | null>(null)
   const lastDetectionTimeRef = useRef<number>(0)
   const lastFrameTimestampRef = useRef<number>(0)
@@ -238,8 +244,33 @@ export function useHandTracking(
           currentConfig
         )
 
-        currentHands.push(handData)
-        newPrevHands[handedness] = handData
+        // Pinch edges must stay immediate for selection. Other gesture labels are
+        // held for a couple of frames so a single noisy landmark packet cannot
+        // move the camera or trigger a return-to-universe action.
+        const history = gestureHistoryRef.current[handedness] || {
+          candidate: 'none' as HandGestureType,
+          frames: 0,
+          stable: 'none' as HandGestureType
+        }
+        const isImmediate = handData.gesture === 'pinch' || handData.pinchState !== 'none'
+        if (isImmediate) {
+          history.candidate = handData.gesture
+          history.frames = currentConfig.gestureStabilityFrames
+          history.stable = handData.gesture
+        } else if (history.candidate === handData.gesture) {
+          history.frames += 1
+        } else {
+          history.candidate = handData.gesture
+          history.frames = 1
+        }
+        if (history.frames >= currentConfig.gestureStabilityFrames) {
+          history.stable = history.candidate
+        }
+        gestureHistoryRef.current[handedness] = history
+
+        const stableHandData = { ...handData, gesture: history.stable }
+        currentHands.push(stableHandData)
+        newPrevHands[handedness] = stableHandData
       }
 
       prevHandsRef.current = newPrevHands
@@ -324,6 +355,7 @@ export function useHandTracking(
 
       if (isTrackingLost) {
         prevHandsRef.current = {}
+        gestureHistoryRef.current = {}
         prevTwoHandRef.current = null
 
         const lostFrame: GestureFrame = {

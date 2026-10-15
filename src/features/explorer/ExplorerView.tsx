@@ -187,20 +187,7 @@ export function ExplorerView({
     setInfoPanelOpen(true)
   }
 
-  // Anti-recoil swipe gesture navigation state machine
-  const lastSwipeTimeRef = useRef(0)
-  const lastSwipeDirRef = useRef<number>(0)
-  const swipeDeltaAccumRef = useRef(0)
-  const isSwipeLockedRef = useRef(false)
   const targetStarIndexRef = useRef<number>(-1)
-
-  // Clear accumulation whenever hand tracking drops or gesture is not open palm
-  useEffect(() => {
-    if (!adaptedHandTracking.isHandDetected || adaptedHandTracking.detectedGesture !== 'open_palm') {
-      swipeDeltaAccumRef.current = 0
-      isSwipeLockedRef.current = false
-    }
-  }, [adaptedHandTracking.isHandDetected, adaptedHandTracking.detectedGesture])
 
   const handleSelectObject = (obj: { id: string; name?: string; starObservation?: StarObservation }) => {
     if (obj.starObservation) {
@@ -280,99 +267,6 @@ export function ExplorerView({
     return found
   }
 
-  // Handle pinch gesture: lock onto hovered target or cycle through catalogue
-  const handlePinchSelect = () => {
-    if (hoveredGestureTarget) {
-      if (hoveredGestureTarget.type === 'planet' && hoveredGestureTarget.planet) {
-        handleSelectPlanet(hoveredGestureTarget.planet, hoveredGestureTarget.star)
-      } else {
-        handleSelectObject(hoveredGestureTarget.star)
-      }
-      return
-    }
-
-    if (!infoPanelOpen) {
-      setInfoPanelOpen(true)
-    } else if (stars.length > 0) {
-      const currentIndex = getActiveStarIndex()
-      const nextIndex = (currentIndex + 1) % stars.length
-      handleSelectStar(stars[nextIndex])
-    }
-  }
-
-  // Handle open palm swipe: smoothly cycle through universe systems with anti-recoil and stop protection
-  const handleHandNavigate = (deltaX: number) => {
-    const now = performance.now()
-    const timeSinceLastSwipe = now - lastSwipeTimeRef.current
-
-    // 1. Mandatory Cooldown: Ignore all delta accumulation for 850ms after a swipe
-    // (Prevents natural stroke deceleration, bounce, and camera flight disruption)
-    if (timeSinceLastSwipe < 850) {
-      swipeDeltaAccumRef.current = 0
-      return
-    }
-
-    // 2. Anti-Recoil Directional Lockout:
-    // If we recently swiped (within 1500ms), and the user's hand is moving in the OPPOSITE
-    // direction (the natural recoil or hand return motion), reject it until the hand has
-    // completely rested (|deltaX| < 0.6) or 1500ms has elapsed.
-    if (isSwipeLockedRef.current) {
-      if (timeSinceLastSwipe < 1500) {
-        const isOpposingMotion =
-          (lastSwipeDirRef.current > 0 && deltaX < -0.8) ||
-          (lastSwipeDirRef.current < 0 && deltaX > 0.8)
-        if (isOpposingMotion) {
-          // Discard return/recoil motion completely so user never snaps back to previous planet
-          swipeDeltaAccumRef.current = 0
-          return
-        }
-        // If hand has slowed down to rest, release the lock
-        if (Math.abs(deltaX) < 0.6) {
-          isSwipeLockedRef.current = false
-        }
-      } else {
-        isSwipeLockedRef.current = false
-      }
-    }
-
-    // 3. Noise Filter & Tremor Suppression:
-    // Discard micro-tremors below 0.8 and decay existing accumulation when stationary
-    if (Math.abs(deltaX) < 0.8) {
-      swipeDeltaAccumRef.current *= 0.75
-      if (Math.abs(swipeDeltaAccumRef.current) < 0.5) {
-        swipeDeltaAccumRef.current = 0
-      }
-      return
-    }
-
-    // 4. Directional Consistency & Leakage Damping:
-    // If incoming delta opposes current accumulation, heavily damp it
-    if (
-      (swipeDeltaAccumRef.current > 0 && deltaX < 0) ||
-      (swipeDeltaAccumRef.current < 0 && deltaX > 0)
-    ) {
-      swipeDeltaAccumRef.current *= 0.4
-    }
-
-    swipeDeltaAccumRef.current += deltaX
-
-    // 5. Swipe Stroke Threshold Execution:
-    // Require intentional accumulated displacement (|accum| >= 22)
-    if (Math.abs(swipeDeltaAccumRef.current) >= 22 && stars.length > 0) {
-      const dir = swipeDeltaAccumRef.current > 0 ? 1 : -1
-      const currentIndex = getActiveStarIndex()
-      const nextIndex = (currentIndex + dir + stars.length) % stars.length
-
-      targetStarIndexRef.current = nextIndex
-      handleSelectStar(stars[nextIndex])
-
-      lastSwipeTimeRef.current = now
-      lastSwipeDirRef.current = dir
-      isSwipeLockedRef.current = true
-      swipeDeltaAccumRef.current = 0
-    }
-  }
-
   return (
     <div className="hud-explorer" id="explorer-view">
       {/* ── 3D Canvas with subtle Head-Orientation Parallax Viewport ── */}
@@ -445,8 +339,6 @@ export function ExplorerView({
         systemCount={celestialObjects.length}
         handTracking={adaptedHandTracking}
         onHeadOrient={setHeadOrient}
-        onPinchSelect={handlePinchSelect}
-        onHandNavigate={handleHandNavigate}
         currentStarIndex={getActiveStarIndex()}
         onPrevStar={() => {
           if (stars.length === 0) return

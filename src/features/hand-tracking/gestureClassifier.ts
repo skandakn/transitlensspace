@@ -241,7 +241,10 @@ export function processHandLandmarks(
   // 3. Pinch measurement normalized by hand scale
   const pinchEuclideanDist = distance2D(thumbTip, indexTip)
   const normalizedPinchDist = pinchEuclideanDist / handScale
-  const wasPinching = previousHand ? previousHand.isPinching : false
+  // Handedness confidence is used as a final action gate. A landmark packet can
+  // still be displayed below this threshold, but it must not pan, zoom, or select.
+  const isConfidenceSufficient = confidence >= config.minGestureConfidence
+  const wasPinching = isConfidenceSufficient && previousHand ? previousHand.isPinching : false
   const { isPinching, pinchState } = evaluatePinchTransition(
     normalizedPinchDist,
     wasPinching,
@@ -249,7 +252,9 @@ export function processHandLandmarks(
   )
 
   // 4. Classify gesture
-  const gesture = classifyGesture(smoothedLandmarks, isPinching, handScale, config)
+  const gesture = isConfidenceSufficient
+    ? classifyGesture(smoothedLandmarks, isPinching, handScale, config)
+    : 'none'
 
   // 5. Calculate motion deltas and velocity
   let deltaX = 0
@@ -262,8 +267,8 @@ export function processHandLandmarks(
     const rawDy = palmCenter.y - previousHand.palmCenter.y
 
     // Apply movement deadzone to filter out natural microscopic tremors
-    deltaX = Math.abs(rawDx) > config.movementDeadzone ? rawDx : 0
-    deltaY = Math.abs(rawDy) > config.movementDeadzone ? rawDy : 0
+    deltaX = isConfidenceSufficient && Math.abs(rawDx) > config.movementDeadzone ? rawDx : 0
+    deltaY = isConfidenceSufficient && Math.abs(rawDy) > config.movementDeadzone ? rawDy : 0
 
     if (deltaTimeSec > 0.001) {
       vx = deltaX / deltaTimeSec

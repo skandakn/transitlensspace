@@ -169,6 +169,16 @@ export interface HandTrackingConfig {
   faceModelAssetPath?: string
   /** Whether face detection is enabled concurrently with hand tracking */
   enableFaceDetection?: boolean
+  /** Minimum handedness confidence required before gestures can control the scene */
+  minGestureConfidence: number
+  /** Consecutive frames required before a non-pinch gesture becomes active */
+  gestureStabilityFrames: number
+  /** MediaPipe hand detection confidence threshold */
+  minHandDetectionConfidence: number
+  /** MediaPipe hand presence confidence threshold */
+  minHandPresenceConfidence: number
+  /** MediaPipe temporal tracking confidence threshold */
+  minTrackingConfidence: number
 }
 
 export const DEFAULT_HAND_TRACKING_CONFIG: HandTrackingConfig = {
@@ -186,5 +196,10 @@ export const DEFAULT_HAND_TRACKING_CONFIG: HandTrackingConfig = {
   wasmLoaderPath: 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.1.0/wasm',
   modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task',
   faceModelAssetPath: 'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task',
-  enableFaceDetection: true
+  enableFaceDetection: true,
+  minGestureConfidence: 0.65,
+  gestureStabilityFrames: 2,
+  minHandDetectionConfidence: 0.65,
+  minHandPresenceConfidence: 0.6,
+  minTrackingConfidence: 0.6
 }

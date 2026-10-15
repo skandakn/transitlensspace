@@ -69,10 +69,6 @@ export interface ExplorerHUDProps {
   handTracking?: HandTrackingState
   /** Callback for subtle head-orientation camera adjustment */
   onHeadOrient?: (orientation: HeadOrientation) => void
-  /** Callback when user pinches to select a target */
-  onPinchSelect?: () => void
-  /** Callback when user rotates navigation with open hand */
-  onHandNavigate?: (deltaX: number, deltaY: number) => void
   /** Shared camera loading state */
   isCameraLoading?: boolean
   /** Shared camera error message */
@@ -123,8 +119,6 @@ export function ExplorerHUD({
   systemCount,
   handTracking,
   onHeadOrient,
-  onPinchSelect,
-  onHandNavigate,
   currentStarIndex = 0,
   onPrevStar,
   onNextStar,
@@ -213,8 +207,6 @@ export function ExplorerHUD({
         <VisionHUD
           handTracking={handTracking}
           hasSelectedTarget={Boolean(selectedStar && selectedStar.id !== '—')}
-          onPinchSelect={onPinchSelect}
-          onHandNavigate={onHandNavigate}
           onHeadOrient={onHeadOrient}
           isCameraActive={isCameraActive}
           isCameraLoading={isCameraLoading}

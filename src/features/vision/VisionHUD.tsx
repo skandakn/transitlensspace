@@ -12,8 +12,6 @@ import type { HandTrackingState, VisionHUDProps } from './types'
 export function VisionHUD({
   handTracking: externalHandTracking,
   hasSelectedTarget = false,
-  onPinchSelect,
-  onHandNavigate,
   onHeadOrient,
   className = '',
   isCameraActive: sharedIsCameraActive,
@@ -113,34 +111,6 @@ export function VisionHUD({
     faceState.isFaceDetected,
     onHeadOrient,
   ])
-
-  // 6. Handle Pinch Gesture -> Trigger celestial selection
-  const lastPinchRef = useRef<boolean>(false)
-  useEffect(() => {
-    if (handState.isPinching && !lastPinchRef.current) {
-      if (onPinchSelect) {
-        onPinchSelect()
-      }
-    }
-    lastPinchRef.current = handState.isPinching
-  }, [handState.isPinching, onPinchSelect])
-
-  // 7. Handle Open Palm Navigation -> Glide universe
-  const lastHandPosRef = useRef<{ x: number; y: number } | null>(null)
-  useEffect(() => {
-    if (handState.detectedGesture === 'open_palm' && handState.handPosition) {
-      if (lastHandPosRef.current && onHandNavigate) {
-        const deltaX = (handState.handPosition.x - lastHandPosRef.current.x) * 120
-        const deltaY = (handState.handPosition.y - lastHandPosRef.current.y) * 120
-        if (Math.abs(deltaX) > 0.05 || Math.abs(deltaY) > 0.05) {
-          onHandNavigate(deltaX, deltaY)
-        }
-      }
-      lastHandPosRef.current = handState.handPosition
-    } else {
-      lastHandPosRef.current = null
-    }
-  }, [handState.detectedGesture, handState.handPosition, onHandNavigate])
 
   // Prompt onboarding on first camera activation if never shown
   const handleStartCameraWithPrivacy = () => {

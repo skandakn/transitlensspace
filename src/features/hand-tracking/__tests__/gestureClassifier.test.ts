@@ -211,6 +211,24 @@ describe('Hand Tracking & Gesture Recognition Engine (Member 1)', () => {
   })
 
   describe('processHandLandmarks & Motion Deadzone', () => {
+    it('suppresses gestures and scene movement when confidence is too low', () => {
+      const landmarks = createOpenPalmLandmarks()
+      const config = DEFAULT_HAND_TRACKING_CONFIG
+      const lowConfidenceHand = processHandLandmarks(landmarks, null, 'Right', 0.3, 0.016, config)
+      const movedLandmarks = landmarks.map((point) => ({ ...point, x: point.x + 0.04 }))
+      const movedLowConfidenceHand = processHandLandmarks(
+        movedLandmarks,
+        lowConfidenceHand,
+        'Right',
+        0.3,
+        0.1,
+        config
+      )
+
+      expect(lowConfidenceHand.gesture).toBe('none')
+      expect(movedLowConfidenceHand.navigationDelta).toEqual({ deltaX: 0, deltaY: 0 })
+    })
+
     it('filters microscopic tremors below movementDeadzone', () => {
       const landmarks = createOpenPalmLandmarks()
       const config = DEFAULT_HAND_TRACKING_CONFIG
