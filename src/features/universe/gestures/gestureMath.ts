@@ -274,3 +274,99 @@ export function calculateCameraFlightTarget(
     ]
   }
 }
+
+export interface SwipeDetectorState {
+  accum: number
+  lastSwipeTime: number
+  lastSwipeDir: number
+  isLocked: boolean
+}
+
+/**
+ * Robust swipe processor with anti-recoil, momentum lockout, tremor suppression,
+ * and stationary decay to guarantee celestial selection never snaps back.
+ */
+export function processSwipeDelta(
+  deltaX: number,
+  now: number,
+  state: SwipeDetectorState,
+  cooldownMs = 850,
+  recoilLockMs = 1500,
+  threshold = 22
+): { triggeredDir: number | null; nextState: SwipeDetectorState } {
+  const timeSinceLast = now - state.lastSwipeTime
+
+  // 1. Mandatory Cooldown: Ignore all delta accumulation after a swipe
+  if (timeSinceLast < cooldownMs) {
+    return {
+      triggeredDir: null,
+      nextState: { ...state, accum: 0 }
+    }
+  }
+
+  let isLocked = state.isLocked
+  // 2. Anti-Recoil Directional Lockout:
+  // If we recently swiped, reject motion opposing the previous swipe (natural hand recoil/return)
+  if (isLocked) {
+    if (timeSinceLast < recoilLockMs) {
+      const opposesLastSwipe =
+        (state.lastSwipeDir > 0 && deltaX < -0.8) ||
+        (state.lastSwipeDir < 0 && deltaX > 0.8)
+      if (opposesLastSwipe) {
+        return {
+          triggeredDir: null,
+          nextState: { ...state, isLocked: true, accum: 0 }
+        }
+      }
+      if (Math.abs(deltaX) < 0.6) {
+        isLocked = false
+      }
+    } else {
+      isLocked = false
+    }
+  }
+
+  // 3. Noise Filter & Tremor Suppression:
+  // Discard micro-tremors below 0.8 and decay existing accumulation when stationary
+  if (Math.abs(deltaX) < 0.8) {
+    const decayed = state.accum * 0.75
+    return {
+      triggeredDir: null,
+      nextState: {
+        ...state,
+        isLocked,
+        accum: Math.abs(decayed) < 0.5 ? 0 : decayed
+      }
+    }
+  }
+
+  // 4. Directional Consistency & Leakage Damping:
+  let newAccum = state.accum
+  if ((newAccum > 0 && deltaX < 0) || (newAccum < 0 && deltaX > 0)) {
+    newAccum *= 0.4
+  }
+  newAccum += deltaX
+
+  // 5. Swipe Stroke Threshold Execution:
+  if (Math.abs(newAccum) >= threshold) {
+    const dir = newAccum > 0 ? 1 : -1
+    return {
+      triggeredDir: dir,
+      nextState: {
+        accum: 0,
+        lastSwipeTime: now,
+        lastSwipeDir: dir,
+        isLocked: true
+      }
+    }
+  }
+
+  return {
+    triggeredDir: null,
+    nextState: {
+      ...state,
+      isLocked,
+      accum: newAccum
+    }
+  }
+}

@@ -8,7 +8,9 @@ import {
   projectWorldToScreen,
   findTargetFromFingertip,
   shouldTriggerSelection,
-  calculateCameraFlightTarget
+  calculateCameraFlightTarget,
+  processSwipeDelta,
+  type SwipeDetectorState
 } from '../gestures/gestureMath'
 import { DEFAULT_GESTURE_SETTINGS } from '../gestures/types'
 import type { CelestialObject } from '../../../types/universe'
@@ -268,6 +270,88 @@ describe('Gesture Navigation Engine Suite (Member 2)', () => {
       const flight = calculateCameraFlightTarget(null, [0, 45, 120])
       expect(flight.lookAt).toEqual([0, 0, 0])
       expect(flight.cameraPosition).toEqual([0, 45, 120])
+    })
+  })
+
+  describe('6. Anti-Recoil Swipe Navigation & Snapback Prevention', () => {
+    const initialState: SwipeDetectorState = {
+      accum: 0,
+      lastSwipeTime: 0,
+      lastSwipeDir: 0,
+      isLocked: false
+    }
+
+    it('triggers forward swipe when intentional displacement threshold is reached', () => {
+      let state = { ...initialState }
+      let result = processSwipeDelta(8, 1000, state)
+      expect(result.triggeredDir).toBeNull()
+      expect(result.nextState.accum).toBe(8)
+
+      result = processSwipeDelta(16, 1050, result.nextState)
+      expect(result.triggeredDir).toBe(1) // +1 Forward next planet
+      expect(result.nextState.accum).toBe(0)
+      expect(result.nextState.isLocked).toBe(true)
+      expect(result.nextState.lastSwipeDir).toBe(1)
+      expect(result.nextState.lastSwipeTime).toBe(1050)
+    })
+
+    it('completely suppresses reverse recoil motion during cooldown window (no snapback)', () => {
+      const justSwipedState: SwipeDetectorState = {
+        accum: 0,
+        lastSwipeTime: 2000,
+        lastSwipeDir: 1,
+        isLocked: true
+      }
+
+      // Hand stops / recoils backwards (-12) at 2400ms (within 850ms cooldown)
+      const recoilResult = processSwipeDelta(-12, 2400, justSwipedState)
+      expect(recoilResult.triggeredDir).toBeNull()
+      expect(recoilResult.nextState.accum).toBe(0) // Rejected and discarded
+    })
+
+    it('suppresses return motion opposing previous swipe during recoil lock window', () => {
+      const pastCooldownState: SwipeDetectorState = {
+        accum: 0,
+        lastSwipeTime: 2000,
+        lastSwipeDir: 1,
+        isLocked: true
+      }
+
+      // Hand returning to center (-15 delta) at 2950ms (> 850ms cooldown, but within 1500ms recoil lock)
+      const returnResult = processSwipeDelta(-15, 2950, pastCooldownState)
+      expect(returnResult.triggeredDir).toBeNull()
+      expect(returnResult.nextState.accum).toBe(0) // Opposing recoil suppressed
+    })
+
+    it('decays stationary tremors so micro-drift never accumulates to trigger accidental jumps', () => {
+      let state: SwipeDetectorState = {
+        accum: 5,
+        lastSwipeTime: 1000,
+        lastSwipeDir: 1,
+        isLocked: false
+      }
+
+      // Hand resting / small webcam noise (0.3)
+      const restingResult = processSwipeDelta(0.3, 3000, state)
+      expect(restingResult.triggeredDir).toBeNull()
+      expect(restingResult.nextState.accum).toBeLessThan(5) // Decayed exponentially
+    })
+
+    it('unlocks after hand settles to rest and allows next intentional swipe', () => {
+      let state: SwipeDetectorState = {
+        accum: 0,
+        lastSwipeTime: 2000,
+        lastSwipeDir: 1,
+        isLocked: true
+      }
+
+      // Hand settles to rest at 3100ms (|deltaX| < 0.6)
+      const restResult = processSwipeDelta(0.2, 3100, state)
+      expect(restResult.nextState.isLocked).toBe(false) // Unlocked!
+
+      // New fresh swipe left (-25) at 3200ms
+      const freshSwipeResult = processSwipeDelta(-25, 3200, restResult.nextState)
+      expect(freshSwipeResult.triggeredDir).toBe(-1) // Previous planet triggered intentionally
     })
   })
 })

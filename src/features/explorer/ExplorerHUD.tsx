@@ -12,13 +12,15 @@
  *  - NavigationControls: Camera reset, orbit toggles, label visibility, speed & quality
  *  - CoordinateDisplay: Astronomical coordinates (RA/Dec) and system status
  */
-import React from 'react'
+import React, { useState } from 'react'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { HudTopBar } from './HudTopBar'
 import { CelestialSearch } from './CelestialSearch'
 import { ObjectInfoPanel } from './ObjectInfoPanel'
 import { NavigationControls, type NavControlState } from './NavigationControls'
 import { CoordinateDisplay } from './CoordinateDisplay'
 import { ObjectLabel } from './ObjectLabel'
+import { NavigationHint } from './NavigationHint'
 import { VisionHUD, type HandTrackingState, type HeadOrientation } from '../vision'
 import type { ExplorerMode } from './types'
 import type { StarObservation } from '../../types'
@@ -83,6 +85,12 @@ export interface ExplorerHUDProps {
   onEnableCamera?: () => Promise<void> | void
   /** Callback to stop or toggle camera */
   onToggleCamera?: () => Promise<void> | void
+  /** Current star index (0-based) in the star list */
+  currentStarIndex?: number
+  /** Navigate to previous star */
+  onPrevStar?: () => void
+  /** Navigate to next star */
+  onNextStar?: () => void
   /** Custom class name */
   className?: string
 }
@@ -117,8 +125,12 @@ export function ExplorerHUD({
   onHeadOrient,
   onPinchSelect,
   onHandNavigate,
+  currentStarIndex = 0,
+  onPrevStar,
+  onNextStar,
   className = '',
 }: ExplorerHUDProps) {
+  const [showHint, setShowHint] = useState(true)
   const showInfoPanel =
     infoPanelOpen && selectedStar !== null && selectedStar.id !== '—'
 
@@ -287,7 +299,7 @@ export function ExplorerHUD({
         />
       </div>
 
-      {/* BOTTOM-CENTER: System Quick-Switcher Bar */}
+      {/* BOTTOM-CENTER: System Quick-Switcher Bar with Prev/Next + Count */}
       <div
         style={{
           position: 'absolute',
@@ -296,39 +308,72 @@ export function ExplorerHUD({
           transform: 'translateX(-50%)',
           zIndex: 20,
         }}
-        className="hud-interactive pointer-events-auto flex items-center gap-1.5 p-1.5 rounded-2xl bg-[#070b14]/90 border border-slate-800 backdrop-blur-md shadow-2xl max-w-[calc(100vw-360px)] overflow-x-auto hud-scroll"
+        className="hud-interactive pointer-events-auto flex items-center gap-1 p-1.5 rounded-2xl bg-[#070b14]/90 border border-slate-800 backdrop-blur-md shadow-2xl max-w-[calc(100vw-340px)]"
         role="toolbar"
         aria-label="Celestial Systems Quick Navigation"
       >
-        <span className="text-[10px] font-mono text-cyan-300 uppercase tracking-wider px-2 shrink-0 hidden md:inline font-bold">
+        {/* Prev arrow */}
+        {onPrevStar && (
+          <button
+            onClick={onPrevStar}
+            className="p-1.5 rounded-xl bg-[#090e1a]/85 border border-slate-800 hover:border-cyan-500/60 hover:text-white text-slate-400 transition-all shrink-0 cursor-pointer"
+            title="Previous star system (←)"
+            aria-label="Previous star system"
+          >
+            <ChevronLeft size={13} />
+          </button>
+        )}
+
+        <span className="text-[9px] font-mono text-cyan-300 uppercase tracking-wider px-1 shrink-0 hidden md:inline font-bold">
           Systems:
         </span>
-        {stars
-          .filter((s) => s.id !== '—' && s.id !== 'TEST-SPARSE')
-          .map((star) => {
-            const starKey = (star.name || star.id).toLowerCase().replace(/[^a-z0-9]/g, '')
-            const selKey = selectedStar ? (selectedStar.name || selectedStar.id).toLowerCase().replace(/[^a-z0-9]/g, '') : ''
-            const isSelected = selectedStar?.id === star.id || (selKey && starKey === selKey)
-            const displayName = star.name.replace(/\s*\(.*\)/, '').trim()
 
-            return (
-              <button
-                key={star.id}
-                onClick={() => {
-                  onSelectStar(star)
-                  onToggleInfoPanel(true)
-                }}
-                className={`px-3 py-1.5 rounded-xl text-xs font-mono border transition-all cursor-pointer shrink-0 whitespace-nowrap ${
-                  isSelected
-                    ? 'bg-cyan-500 text-slate-950 font-bold border-cyan-400 shadow-[0_0_14px_rgba(6,182,212,0.55)] scale-105'
-                    : 'bg-[#090e1a]/85 text-slate-300 border-slate-800 hover:border-cyan-500/60 hover:text-white'
-                }`}
-                title={`Focus ${star.name}`}
-              >
-                {displayName}
-              </button>
-            )
-          })}
+        {/* Scrollable star pills */}
+        <div className="flex items-center gap-1 overflow-x-auto max-w-[50vw] hud-scroll">
+          {stars
+            .filter((s) => s.id !== '—' && s.id !== 'TEST-SPARSE')
+            .map((star) => {
+              const starKey = (star.name || star.id).toLowerCase().replace(/[^a-z0-9]/g, '')
+              const selKey = selectedStar ? (selectedStar.name || selectedStar.id).toLowerCase().replace(/[^a-z0-9]/g, '') : ''
+              const isSelected = selectedStar?.id === star.id || (selKey && starKey === selKey)
+              const displayName = star.name.replace(/\s*\(.*\)/, '').trim()
+
+              return (
+                <button
+                  key={star.id}
+                  onClick={() => {
+                    onSelectStar(star)
+                    onToggleInfoPanel(true)
+                  }}
+                  className={`px-2.5 py-1.5 rounded-xl text-xs font-mono border transition-all cursor-pointer shrink-0 whitespace-nowrap ${
+                    isSelected
+                      ? 'bg-cyan-500 text-slate-950 font-bold border-cyan-400 shadow-[0_0_14px_rgba(6,182,212,0.55)] scale-105'
+                      : 'bg-[#090e1a]/85 text-slate-300 border-slate-800 hover:border-cyan-500/60 hover:text-white'
+                  }`}
+                  title={`Focus ${star.name}`}
+                >
+                  {displayName}
+                </button>
+              )
+            })}
+        </div>
+
+        {/* Count indicator */}
+        <span className="text-[9px] font-mono text-slate-500 px-1 shrink-0 hidden sm:inline tabular-nums">
+          {currentStarIndex + 1}/{stars.filter(s => s.id !== '—' && s.id !== 'TEST-SPARSE').length}
+        </span>
+
+        {/* Next arrow */}
+        {onNextStar && (
+          <button
+            onClick={onNextStar}
+            className="p-1.5 rounded-xl bg-[#090e1a]/85 border border-slate-800 hover:border-cyan-500/60 hover:text-white text-slate-400 transition-all shrink-0 cursor-pointer"
+            title="Next star system (→)"
+            aria-label="Next star system"
+          >
+            <ChevronRight size={13} />
+          </button>
+        )}
       </div>
 
       {/* BOTTOM-RIGHT: Astronomical Coordinate & Telemetry Status */}
@@ -339,6 +384,16 @@ export function ExplorerHUD({
           explorerMode={mode}
         />
       </div>
+
+      {/* BOTTOM-LEFT + NAVIGATION HINT: Contextual guide overlay */}
+      {showHint && (
+        <div style={{ position: 'absolute', bottom: 80, left: 16, zIndex: 25 }}>
+          <NavigationHint
+            isCameraActive={isCameraActive}
+            onDismiss={() => setShowHint(false)}
+          />
+        </div>
+      )}
     </div>
   )
 }

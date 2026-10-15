@@ -40,6 +40,31 @@ function makeWorkspaceStar(identifier: string, mission: SpaceMission): StarObser
     return matchedObs.star
   }
 
+  const matchedBundled = BUNDLED_CELESTIAL_SYSTEMS.find(
+    (b) =>
+      b.id.toLowerCase() === target.toLowerCase() ||
+      b.name.toLowerCase() === target.toLowerCase()
+  )
+  if (matchedBundled) {
+    return {
+      id: matchedBundled.id,
+      name: matchedBundled.name,
+      catalogId: matchedBundled.id,
+      mission: matchedBundled.mission || mission,
+      sectorOrQuarter: 'Primary Mission',
+      ra: matchedBundled.raDegrees ?? 0,
+      dec: matchedBundled.decDegrees ?? 0,
+      magnitude: matchedBundled.magnitude ?? 10.0,
+      temperature: matchedBundled.temperature ?? 5778,
+      stellarRadius: matchedBundled.stellarRadiusSolar ?? matchedBundled.radius,
+      stellarMass: matchedBundled.stellarMassSolar ?? 1.0,
+      observationDate: matchedBundled.retrievalDate || '2023-01-01',
+      description: matchedBundled.description || `${matchedBundled.name} planetary system.`,
+      distanceParsecs: matchedBundled.distanceParsecs ?? 50,
+      numPoints: 1200
+    }
+  }
+
   return {
     id: target || '—',
     name: target || 'No target selected',
@@ -499,10 +524,44 @@ export function App() {
 
   const stars = useMemo(() => {
     const predefinedStars = PREDEFINED_OBSERVATIONS.map((o) => o.star)
-    const isCustom = !predefinedStars.some((s) => s.id === selectedStar.id)
+    const bundledStars: StarObservation[] = BUNDLED_CELESTIAL_SYSTEMS.map((system) => {
+      const existing = predefinedStars.find(
+        (p) =>
+          p.id.toLowerCase() === system.id.toLowerCase() ||
+          p.name.toLowerCase() === system.name.toLowerCase()
+      )
+      if (existing) return existing
+
+      return {
+        id: system.id,
+        name: system.name,
+        catalogId: system.id,
+        mission: system.mission || 'TESS',
+        sectorOrQuarter: 'Primary Mission',
+        ra: system.raDegrees ?? 0,
+        dec: system.decDegrees ?? 0,
+        magnitude: system.magnitude ?? 10.0,
+        temperature: system.temperature ?? 5778,
+        stellarRadius: system.stellarRadiusSolar ?? system.radius,
+        stellarMass: system.stellarMassSolar ?? 1.0,
+        observationDate: system.retrievalDate || '2023-01-01',
+        description: system.description || `${system.name} system.`,
+        distanceParsecs: system.distanceParsecs ?? 50,
+        numPoints: 1200
+      }
+    })
+
+    const combined = [...predefinedStars]
+    for (const bs of bundledStars) {
+      if (!combined.some((s) => s.id === bs.id || s.name === bs.name)) {
+        combined.push(bs)
+      }
+    }
+
+    const isCustom = !combined.some((s) => s.id === selectedStar.id)
     return isCustom && selectedStar.id !== '—'
-      ? [...predefinedStars, selectedStar]
-      : predefinedStars
+      ? [...combined, selectedStar]
+      : combined
   }, [selectedStar])
 
   // Coordinated workflow hook with client-side detection engine

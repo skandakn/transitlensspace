@@ -146,6 +146,8 @@ export function GestureUniverseController({
         controls.target.distanceTo(targetLookAt.current) < 0.2 &&
         camera.position.distanceTo(targetCamPos.current) < 0.6
       ) {
+        controls.target.copy(targetLookAt.current)
+        camera.position.copy(targetCamPos.current)
         isFlying.current = false
         isResetting.current = false
       }

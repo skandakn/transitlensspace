@@ -75,6 +75,13 @@ export function ExplorerView({
   })
   // Track whether info panel is open (closed by user vs. no selection)
   const [infoPanelOpen, setInfoPanelOpen] = useState(true)
+  // Selected planet ID within focused star system
+  const [selectedPlanetId, setSelectedPlanetId] = useState<string | undefined>(undefined)
+
+  useEffect(() => {
+    setSelectedPlanetId(undefined)
+  }, [selectedStarId])
+
   // Gesture navigation and calibration state (Member 2, Member 3 & Member 4)
   const [gestureMode, setGestureMode] = useState<GestureNavigationMode>('explore')
   const [gestureSettings, setGestureSettings] = useState<GestureNavigationSettings>(DEFAULT_GESTURE_SETTINGS)
@@ -129,22 +136,6 @@ export function ExplorerView({
     }
   }, [customHandTracking, tracking.frame, tracking.status])
 
-  // Keyboard shortcut listeners: Spacebar to pause/unpause gestures, 'c' for calibration
-  useEffect(() => {
-    function handleKeyDown(e: KeyboardEvent) {
-      if ((e.target as HTMLElement)?.tagName === 'INPUT') return
-      if (e.key === ' ' && tracking.isCameraActive) {
-        e.preventDefault()
-        setGestureMode((prev) => (prev === 'paused' ? 'explore' : 'paused'))
-      } else if ((e.key === 'c' || e.key === 'C') && !e.ctrlKey && !e.metaKey) {
-        setIsCalibrationOpen((prev) => !prev)
-      }
-    }
-
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [tracking.isCameraActive])
-
   const defaultCelestialObjects = useMemo(() => starObservationsToCelestialObjects(stars), [stars])
   const celestialObjects = customCelestialObjects || defaultCelestialObjects
 
@@ -160,14 +151,56 @@ export function ExplorerView({
     )
   }, [stars, selectedStarId])
 
-  // When a different star is selected, re-open the info panel
+  // Keyboard shortcut listeners: Spacebar to pause/unpause gestures, 'c' for calibration,
+  // ArrowLeft/ArrowRight to cycle through star systems
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      const tag = (e.target as HTMLElement)?.tagName
+      if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') return
+
+      if (e.key === ' ' && tracking.isCameraActive) {
+        e.preventDefault()
+        setGestureMode((prev) => (prev === 'paused' ? 'explore' : 'paused'))
+      } else if ((e.key === 'c' || e.key === 'C') && !e.ctrlKey && !e.metaKey) {
+        setIsCalibrationOpen((prev) => !prev)
+      } else if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+        if (stars.length === 0) return
+        e.preventDefault()
+        const dir = e.key === 'ArrowRight' ? 1 : -1
+        const currentIdx = getActiveStarIndex()
+        const nextIdx = (currentIdx + dir + stars.length) % stars.length
+        handleSelectStar(stars[nextIdx])
+      } else if (e.key === 'Escape') {
+        setInfoPanelOpen(false)
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tracking.isCameraActive, stars, selectedStar])
+
+  // When a different star is selected, re-open the info panel and reset planet selection
   const handleSelectStar = (star: StarObservation) => {
+    setSelectedPlanetId(undefined)
     onSelectStar(star)
     setInfoPanelOpen(true)
   }
 
+  // Anti-recoil swipe gesture navigation state machine
   const lastSwipeTimeRef = useRef(0)
+  const lastSwipeDirRef = useRef<number>(0)
   const swipeDeltaAccumRef = useRef(0)
+  const isSwipeLockedRef = useRef(false)
+  const targetStarIndexRef = useRef<number>(-1)
+
+  // Clear accumulation whenever hand tracking drops or gesture is not open palm
+  useEffect(() => {
+    if (!adaptedHandTracking.isHandDetected || adaptedHandTracking.detectedGesture !== 'open_palm') {
+      swipeDeltaAccumRef.current = 0
+      isSwipeLockedRef.current = false
+    }
+  }, [adaptedHandTracking.isHandDetected, adaptedHandTracking.detectedGesture])
 
   const handleSelectObject = (obj: { id: string; name?: string; starObservation?: StarObservation }) => {
     if (obj.starObservation) {
@@ -192,7 +225,8 @@ export function ExplorerView({
     }
   }
 
-  const handleSelectPlanet = (_planet: CelestialPlanet, parentStar: CelestialObject) => {
+  const handleSelectPlanet = (planet: CelestialPlanet, parentStar: CelestialObject) => {
+    setSelectedPlanetId(planet.id)
     if (parentStar.starObservation) {
       handleSelectStar(parentStar.starObservation)
       return
@@ -223,13 +257,27 @@ export function ExplorerView({
 
   const getActiveStarIndex = () => {
     if (stars.length === 0) return 0
+    if (
+      targetStarIndexRef.current >= 0 &&
+      targetStarIndexRef.current < stars.length
+    ) {
+      const targetStar = stars[targetStarIndexRef.current]
+      const currentKey = (selectedStar?.name || selectedStarId || '').toLowerCase().replace(/[^a-z0-9]/g, '')
+      const targetKey = (targetStar.name || targetStar.id).toLowerCase().replace(/[^a-z0-9]/g, '')
+      if (targetStar.id === selectedStarId || targetKey === currentKey) {
+        return targetStarIndexRef.current
+      }
+    }
+
     const currentKey = (selectedStar?.name || selectedStarId || '').toLowerCase().replace(/[^a-z0-9]/g, '')
     const idx = stars.findIndex((s) => {
       const sIdKey = s.id.toLowerCase().replace(/[^a-z0-9]/g, '')
       const sNameKey = s.name.toLowerCase().replace(/[^a-z0-9]/g, '')
-      return s.id === selectedStarId || sIdKey === currentKey || sNameKey === currentKey || sNameKey.includes(currentKey)
+      return s.id === selectedStarId || sIdKey === currentKey || sNameKey === currentKey || sNameKey.includes(currentKey) || currentKey.includes(sNameKey)
     })
-    return idx >= 0 ? idx : 0
+    const found = idx >= 0 ? idx : 0
+    targetStarIndexRef.current = found
+    return found
   }
 
   // Handle pinch gesture: lock onto hovered target or cycle through catalogue
@@ -252,18 +300,75 @@ export function ExplorerView({
     }
   }
 
-  // Handle open palm swipe: smoothly cycle through universe systems
+  // Handle open palm swipe: smoothly cycle through universe systems with anti-recoil and stop protection
   const handleHandNavigate = (deltaX: number) => {
     const now = performance.now()
-    if (now - lastSwipeTimeRef.current < 450) return
+    const timeSinceLastSwipe = now - lastSwipeTimeRef.current
+
+    // 1. Mandatory Cooldown: Ignore all delta accumulation for 850ms after a swipe
+    // (Prevents natural stroke deceleration, bounce, and camera flight disruption)
+    if (timeSinceLastSwipe < 850) {
+      swipeDeltaAccumRef.current = 0
+      return
+    }
+
+    // 2. Anti-Recoil Directional Lockout:
+    // If we recently swiped (within 1500ms), and the user's hand is moving in the OPPOSITE
+    // direction (the natural recoil or hand return motion), reject it until the hand has
+    // completely rested (|deltaX| < 0.6) or 1500ms has elapsed.
+    if (isSwipeLockedRef.current) {
+      if (timeSinceLastSwipe < 1500) {
+        const isOpposingMotion =
+          (lastSwipeDirRef.current > 0 && deltaX < -0.8) ||
+          (lastSwipeDirRef.current < 0 && deltaX > 0.8)
+        if (isOpposingMotion) {
+          // Discard return/recoil motion completely so user never snaps back to previous planet
+          swipeDeltaAccumRef.current = 0
+          return
+        }
+        // If hand has slowed down to rest, release the lock
+        if (Math.abs(deltaX) < 0.6) {
+          isSwipeLockedRef.current = false
+        }
+      } else {
+        isSwipeLockedRef.current = false
+      }
+    }
+
+    // 3. Noise Filter & Tremor Suppression:
+    // Discard micro-tremors below 0.8 and decay existing accumulation when stationary
+    if (Math.abs(deltaX) < 0.8) {
+      swipeDeltaAccumRef.current *= 0.75
+      if (Math.abs(swipeDeltaAccumRef.current) < 0.5) {
+        swipeDeltaAccumRef.current = 0
+      }
+      return
+    }
+
+    // 4. Directional Consistency & Leakage Damping:
+    // If incoming delta opposes current accumulation, heavily damp it
+    if (
+      (swipeDeltaAccumRef.current > 0 && deltaX < 0) ||
+      (swipeDeltaAccumRef.current < 0 && deltaX > 0)
+    ) {
+      swipeDeltaAccumRef.current *= 0.4
+    }
 
     swipeDeltaAccumRef.current += deltaX
-    if (Math.abs(swipeDeltaAccumRef.current) > 16 && stars.length > 0) {
+
+    // 5. Swipe Stroke Threshold Execution:
+    // Require intentional accumulated displacement (|accum| >= 22)
+    if (Math.abs(swipeDeltaAccumRef.current) >= 22 && stars.length > 0) {
       const dir = swipeDeltaAccumRef.current > 0 ? 1 : -1
       const currentIndex = getActiveStarIndex()
       const nextIndex = (currentIndex + dir + stars.length) % stars.length
+
+      targetStarIndexRef.current = nextIndex
       handleSelectStar(stars[nextIndex])
+
       lastSwipeTimeRef.current = now
+      lastSwipeDirRef.current = dir
+      isSwipeLockedRef.current = true
       swipeDeltaAccumRef.current = 0
     }
   }
@@ -284,6 +389,7 @@ export function ExplorerView({
           key={resetKey}
           celestialObjects={celestialObjects}
           selectedObjectId={selectedStarId}
+          selectedPlanetId={selectedPlanetId}
           onSelectObject={handleSelectObject}
           onSelectPlanet={handleSelectPlanet}
           onHoverGestureTarget={setHoveredGestureTarget}
@@ -341,6 +447,17 @@ export function ExplorerView({
         onHeadOrient={setHeadOrient}
         onPinchSelect={handlePinchSelect}
         onHandNavigate={handleHandNavigate}
+        currentStarIndex={getActiveStarIndex()}
+        onPrevStar={() => {
+          if (stars.length === 0) return
+          const idx = (getActiveStarIndex() - 1 + stars.length) % stars.length
+          handleSelectStar(stars[idx])
+        }}
+        onNextStar={() => {
+          if (stars.length === 0) return
+          const idx = (getActiveStarIndex() + 1) % stars.length
+          handleSelectStar(stars[idx])
+        }}
       />
 
       {/* ── Gesture Calibration & Kinematics Modal (Member 4) ── */}
