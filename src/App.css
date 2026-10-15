@@ -418,6 +418,10 @@ body {
   background: #7f91a4;
 }
 
+.engine-status-dot {
+  animation: dot-glow 2s ease-in-out infinite;
+}
+
 .engine-status strong {
   padding-left: 7px;
   border-left: 1px solid #2a394a;
@@ -430,11 +434,19 @@ body {
   border-radius: 10px;
   background: var(--surface);
   box-shadow: 0 9px 24px rgba(0, 0, 0, 0.08);
+  animation: panel-enter 0.45s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+  transition: box-shadow 200ms ease, border-color 200ms ease;
+}
+
+.panel:hover {
+  border-color: rgba(89, 214, 226, 0.12);
+  box-shadow: 0 9px 28px rgba(0, 0, 0, 0.13), 0 0 0 1px rgba(89, 214, 226, 0.04);
 }
 
 .target-panel {
   padding: 19px 21px 14px;
   margin-bottom: 18px;
+  animation-delay: 0.05s;
 }
 
 .target-panel-heading {
@@ -570,6 +582,7 @@ body {
 }
 
 .analyze-button {
+  position: relative;
   height: 42px;
   min-width: 140px;
   display: inline-flex;
@@ -584,12 +597,30 @@ body {
   font-size: 11px;
   font-weight: 700;
   cursor: pointer;
+  overflow: hidden;
   transition: background 140ms ease, box-shadow 140ms ease, transform 140ms ease;
+}
+
+/* Shimmer sheen on the active analyze button */
+.analyze-button:not(:disabled)::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    105deg,
+    transparent 35%,
+    rgba(255, 255, 255, 0.22) 50%,
+    transparent 65%
+  );
+  background-size: 200% auto;
+  animation: shimmer 2.4s linear infinite;
+  pointer-events: none;
+  border-radius: inherit;
 }
 
 .analyze-button:not(:disabled):hover {
   background: #77e4ed;
-  box-shadow: 0 0 20px rgba(57, 202, 216, 0.14);
+  box-shadow: 0 0 24px rgba(57, 202, 216, 0.28), 0 0 8px rgba(57, 202, 216, 0.14);
   transform: translateY(-1px);
 }
 
@@ -651,6 +682,10 @@ body {
   gap: 18px;
   scroll-margin-top: 82px;
 }
+
+/* Stagger chart and results panels */
+.analysis-layout > .chart-panel  { animation-delay: 0.1s; }
+.analysis-layout > .results-panel { animation-delay: 0.18s; }
 
 .chart-panel,
 .results-panel {
@@ -726,6 +761,19 @@ body {
   border-bottom: 1px solid #304153;
   border-radius: 2px 2px 0 2px;
   background: linear-gradient(180deg, rgba(15, 29, 44, 0.1), rgba(12, 24, 37, 0.23));
+}
+
+/* Scan beam sweeps across empty chart area */
+.chart-grid::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(89, 214, 226, 0.35), transparent);
+  animation: scan 3.2s linear infinite;
+  pointer-events: none;
+  z-index: 1;
 }
 
 .chart-grid--populated {
