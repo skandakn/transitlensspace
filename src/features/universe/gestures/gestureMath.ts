@@ -1,6 +1,6 @@
 import * as THREE from 'three'
 import type { CelestialObject, CelestialPlanet } from '../../../types/universe'
-import type { TwoHandData } from '../../../types/gestures'
+import type { TwoHandData, HandLandmark2D } from '../../../types/gestures'
 import type { GestureTarget, GestureNavigationSettings } from './types'
 
 /**
@@ -67,22 +67,55 @@ export function calculateTwoHandZoom(
 }
 
 /**
- * Single-hand pinch/depth zoom fallback when only one hand is visible.
- * Closing fingers/pinch zooms in; opening/expanding hand zooms out.
+ * Calculates normalized hand aperture (extent of finger openness / closure).
+ * Scale-invariant (normalized by palm distance from wrist to middle MCP joint).
+ * - Open/expanded fingers: aperture is large (> 1.4)
+ * - Closed fingers / fist / pinch: aperture is small (< 0.9)
+ */
+export function calculateHandAperture(
+  landmarks: HandLandmark2D[] | undefined,
+  fallbackPinchDist = 1.0
+): number {
+  if (!landmarks || landmarks.length < 21) {
+    return fallbackPinchDist
+  }
+
+  const wrist = landmarks[0]
+  // Stable palm scale: distance between wrist (0) and middle MCP (9)
+  const palmScale = Math.hypot(landmarks[9].x - wrist.x, landmarks[9].y - wrist.y) || 0.15
+
+  // Distances from 5 fingertips (Thumb 4, Index 8, Middle 12, Ring 16, Pinky 20) to wrist
+  const tipIndices = [4, 8, 12, 16, 20]
+  let sumDist = 0
+  for (const idx of tipIndices) {
+    sumDist += Math.hypot(landmarks[idx].x - wrist.x, landmarks[idx].y - wrist.y)
+  }
+  const avgTipDist = sumDist / tipIndices.length
+
+  // Also include thumb-to-index pinch distance for precision
+  const pinchDist = Math.hypot(landmarks[4].x - landmarks[8].x, landmarks[4].y - landmarks[8].y)
+
+  return (avgTipDist * 0.7 + pinchDist * 0.3) / palmScale
+}
+
+/**
+ * Single-hand finger closure / opening depth zoom.
+ * When closing fingers (negative delta), camera zooms in (decreases radius).
+ * When opening/expanding fingers (positive delta), camera zooms out (increases radius).
  */
 export function calculateSingleHandDepthZoom(
   currentPinchOrDepthDelta: number,
   currentRadius: number,
   zoomSensitivity: number,
-  minRadius = 10,
-  maxRadius = 380
+  minRadius = 6,
+  maxRadius = 450
 ): number {
-  const filteredDelta = applyDeadzone(currentPinchOrDepthDelta, 0.004)
+  const filteredDelta = applyDeadzone(currentPinchOrDepthDelta, 0.003)
   if (filteredDelta === 0) return currentRadius
 
   // Closing fingers (negative delta) zooms in
   // Opening fingers (positive delta) zooms out
-  const zoomFactor = 1 + filteredDelta * zoomSensitivity * 2.2
+  const zoomFactor = Math.max(0.4, Math.min(1.8, 1 + filteredDelta * zoomSensitivity * 2.4))
   const newRadius = currentRadius * zoomFactor
 
   return Math.max(minRadius, Math.min(maxRadius, newRadius))

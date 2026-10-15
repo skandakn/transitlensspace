@@ -5,6 +5,7 @@ import {
   calculateSphericalRotation,
   calculateTwoHandZoom,
   calculateSingleHandDepthZoom,
+  calculateHandAperture,
   projectWorldToScreen,
   findTargetFromFingertip,
   shouldTriggerSelection,
@@ -136,6 +137,47 @@ describe('Gesture Navigation Engine Suite (Member 2)', () => {
 
       const zoomedOut = calculateSingleHandDepthZoom(0.05, currentRadius, settings.zoomSensitivity)
       expect(zoomedOut).toBeGreaterThan(currentRadius)
+    })
+
+    it('zooms in when closing fingers (negative aperture delta) and zooms out when opening fingers', () => {
+      const currentRadius = 80
+
+      // When closing fingers: aperture decreases (e.g. delta = -0.06) -> radius decreases (zooms in)
+      const zoomedIn = calculateSingleHandDepthZoom(-0.06, currentRadius, settings.zoomSensitivity)
+      expect(zoomedIn).toBeLessThan(currentRadius)
+
+      // When opening/expanding fingers: aperture increases (e.g. delta = +0.06) -> radius increases (zooms out)
+      const zoomedOut = calculateSingleHandDepthZoom(0.06, currentRadius, settings.zoomSensitivity)
+      expect(zoomedOut).toBeGreaterThan(currentRadius)
+    })
+
+    it('calculates scale-invariant hand aperture reflecting finger openness and closure', () => {
+      // Create mock open hand landmarks (all fingertips extended far from wrist)
+      const mockOpenHand = Array.from({ length: 21 }, (_, i) => ({ x: 0.5, y: 0.5, z: 0 }))
+      mockOpenHand[0] = { x: 0.5, y: 0.8, z: 0 }  // Wrist
+      mockOpenHand[9] = { x: 0.5, y: 0.6, z: 0 }  // Middle MCP (palm scale = 0.2)
+      mockOpenHand[4] = { x: 0.3, y: 0.5, z: 0 }  // Thumb tip
+      mockOpenHand[8] = { x: 0.45, y: 0.2, z: 0 } // Index tip (extended)
+      mockOpenHand[12] = { x: 0.5, y: 0.18, z: 0 } // Middle tip (extended)
+      mockOpenHand[16] = { x: 0.55, y: 0.22, z: 0 } // Ring tip (extended)
+      mockOpenHand[20] = { x: 0.65, y: 0.3, z: 0 }  // Pinky tip (extended)
+
+      const openAperture = calculateHandAperture(mockOpenHand)
+
+      // Create mock closed hand (fingertips curled close to wrist / palm)
+      const mockClosedHand = Array.from({ length: 21 }, (_, i) => ({ x: 0.5, y: 0.5, z: 0 }))
+      mockClosedHand[0] = { x: 0.5, y: 0.8, z: 0 }
+      mockClosedHand[9] = { x: 0.5, y: 0.6, z: 0 }
+      mockClosedHand[4] = { x: 0.48, y: 0.62, z: 0 }
+      mockClosedHand[8] = { x: 0.5, y: 0.6, z: 0 }  // Curled in
+      mockClosedHand[12] = { x: 0.5, y: 0.61, z: 0 }
+      mockClosedHand[16] = { x: 0.51, y: 0.62, z: 0 }
+      mockClosedHand[20] = { x: 0.52, y: 0.65, z: 0 }
+
+      const closedAperture = calculateHandAperture(mockClosedHand)
+
+      // Verify closed fingers produce smaller aperture than open fingers
+      expect(closedAperture).toBeLessThan(openAperture)
     })
   })
 

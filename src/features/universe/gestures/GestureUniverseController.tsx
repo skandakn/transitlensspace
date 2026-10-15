@@ -10,6 +10,7 @@ import {
   calculateSphericalRotation,
   calculateTwoHandZoom,
   calculateSingleHandDepthZoom,
+  calculateHandAperture,
   findTargetFromFingertip,
   shouldTriggerSelection,
   calculateCameraFlightTarget
@@ -196,7 +197,7 @@ export function GestureUniverseController({
     let currentPhi = Math.acos(Math.max(-1, Math.min(1, offset.y / currentRadius)))
 
     // ──────────────────────────────────────────────────────────────────────────
-    // 4. TWO-HAND DISTANCE ZOOM
+    // 4. ZOOM CONTROLS (Two-Hand Distance OR Single-Hand Finger Closure/Opening)
     // ──────────────────────────────────────────────────────────────────────────
     if (gestureFrame.twoHandData) {
       const newRadius = calculateTwoHandZoom(
@@ -209,6 +210,26 @@ export function GestureUniverseController({
       if (Math.abs(newRadius - currentRadius) > 0.05) {
         currentRadius = newRadius
       }
+    } else if (primaryHand) {
+      // Single-hand finger closure / opening zoom:
+      // Closing fingers (negative delta) zooms in; opening fingers (positive delta) zooms out
+      const aperture = calculateHandAperture(primaryHand.smoothedLandmarks, primaryHand.pinchDistance)
+      if (prevPinchDistRef.current !== null) {
+        const apertureDelta = aperture - prevPinchDistRef.current
+        const newRadius = calculateSingleHandDepthZoom(
+          apertureDelta,
+          currentRadius,
+          settings.zoomSensitivity,
+          controls.minDistance,
+          controls.maxDistance
+        )
+        if (Math.abs(newRadius - currentRadius) > 0.02) {
+          currentRadius = newRadius
+        }
+      }
+      prevPinchDistRef.current = aperture
+    } else {
+      prevPinchDistRef.current = null
     }
 
     // ──────────────────────────────────────────────────────────────────────────
@@ -284,23 +305,6 @@ export function GestureUniverseController({
           currentTheta = theta
           currentPhi = phi
         }
-      }
-
-      // Single-hand pinch/scale depth zoom fallback
-      if (!gestureFrame.twoHandData && primaryHand.pinchDistance && !hoveredTargetRef.current) {
-        if (prevPinchDistRef.current !== null) {
-          const depthDelta = primaryHand.pinchDistance - prevPinchDistRef.current
-          currentRadius = calculateSingleHandDepthZoom(
-            depthDelta,
-            currentRadius,
-            settings.zoomSensitivity,
-            controls.minDistance,
-            controls.maxDistance
-          )
-        }
-        prevPinchDistRef.current = primaryHand.pinchDistance
-      } else {
-        prevPinchDistRef.current = null
       }
     }
 
