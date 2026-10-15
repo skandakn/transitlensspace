@@ -13,8 +13,15 @@ from .analysis import run_bls
 from .catalog import DATA_DIR, find_observation, observation_manifest
 
 app = FastAPI(title="TransitLens Analysis API", version="1.0.0")
-origins = [item.strip() for item in os.getenv("FRONTEND_ORIGINS", "http://localhost:5173").split(",") if item.strip()]
-app.add_middleware(CORSMiddleware, allow_origins=origins, allow_credentials=False, allow_methods=["GET", "POST"], allow_headers=["*"])
+frontend_origins = os.getenv("FRONTEND_ORIGINS", "*")
+origins = [item.strip() for item in frontend_origins.split(",") if item.strip()]
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins if origins else ["*"],
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 class AnalysisRequest(BaseModel):
@@ -24,6 +31,7 @@ class AnalysisRequest(BaseModel):
 
 
 @app.get("/health")
+@app.get("/api/health")
 def health() -> dict[str, str]:
     return {"status": "ok", "engine": "Lightkurve Box Least Squares"}
 

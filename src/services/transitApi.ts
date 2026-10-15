@@ -9,18 +9,17 @@ interface BackendAnalysisResponse {
 }
 
 export function isTransitApiConfigured() {
-  return Boolean(apiBaseUrl)
+  // In Vercel multi-service deployment, the backend service is co-located at /api
+  return Boolean(apiBaseUrl || typeof window !== 'undefined')
 }
 
 export async function analyzeBundledObservation(
   datasetId: string,
   parameters: Pick<AnalysisParameters, 'minPeriodDays' | 'maxPeriodDays'>
 ): Promise<BackendAnalysisResponse> {
-  if (!apiBaseUrl) {
-    throw new Error('The scientific analysis service is not configured. Set VITE_TRANSIT_API_URL to the deployed FastAPI service URL.')
-  }
+  const url = apiBaseUrl ? `${apiBaseUrl}/api/v1/analyze` : '/api/v1/analyze'
 
-  const response = await fetch(`${apiBaseUrl}/api/v1/analyze`, {
+  const response = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
